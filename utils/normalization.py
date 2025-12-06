@@ -6,6 +6,17 @@ Based on FinRL scaling approach (power-of-two downscaling).
 import numpy as np
 
 
+TECH_SCALE_FACTORS = np.array([
+    2**-1,   # macd
+    2**-15,  # boll_ub
+    2**-15,  # boll_lb
+    2**-6,   # rsi_30
+    2**-6,   # dx_30
+    2**-15,  # close_30_sma
+    2**-15,  # close_60_sma
+], dtype=np.float32)
+
+
 def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
     """
     Apply FinRL-style normalization to all components of the state.
@@ -35,10 +46,8 @@ def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
     # Price features
     norm_price = price_vec * 2**-15
 
-    # Technical indicators: we can scale all indicators uniformly
-    # or individually if needed. FinRL often uses per-index scaling.
-    # For now: uniform scaling similar to price.
-    norm_tech = tech_vec * 2**-15
+    # Technical indicators - per-index scaling
+    norm_tech = tech_vec * TECH_SCALE_FACTORS
 
     # Strategy signals (LONG/SHORT/HOLD/FLAT → numeric)
     norm_signal = signal_vec * 2**-1

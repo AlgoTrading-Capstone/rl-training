@@ -11,7 +11,20 @@ LEVERAGE_LIMIT = 2.0
 
 # Maximum debt allowed (in USD).
 # The agent may let the account balance drop to -MAX_DEBT, but no further. Set to 0 to forbid debt entirely.
-MAX_DEBT = 20_000
+MAX_DEBT = 0
+
+# Minimum and maximum stop-loss distance as a fraction of entry price.
+# Example: 0.01 = 1%, 0.05 = 5%.
+MIN_STOP_LOSS_PCT = 0.01
+MAX_STOP_LOSS_PCT = 0.05
+
+# Deadzone for exposure changes:
+# If the requested change in normalized exposure is smaller than this threshold, we treat the action as HOLD and skip trading (reduces churning and fees).
+EXPOSURE_DEADZONE = 0.10  # 10% change in target exposure
+
+# Hard cap on absolute BTC position size (long or short).
+# Prevents the agent from taking excessive exposure, even when leverage is available.
+MAX_POSITION_BTC = 1.0
 
 # Transaction fee applied to each executed MARKET (taker) order (as a fraction).
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
@@ -23,9 +36,9 @@ GAMMA = 0.990
 
 # Number of candles between agent decisions.
 # Example:
-# DECISION_INTERVAL = 1 → agent acts every candle
-# DECISION_INTERVAL = 2 → agent acts every 2 candles
-# DECISION_INTERVAL = 4 → agent acts every 4 candles, etc.
+# DECISION_INTERVAL = 1 - agent acts every candle
+# DECISION_INTERVAL = 2 - agent acts every 2 candles
+# DECISION_INTERVAL = 4 - agent acts every 4 candles, etc.
 # Decision frequency of 15 minutes (or every candle for 15m data) is recommended for balanced responsiveness.
 DECISION_INTERVAL = 1
 
@@ -56,14 +69,21 @@ DATA_YEARS_BACK = 6
 # List of technical indicators used by the environment.
 # These correspond to FinRL's BTC example and must remain in this order because normalization is index-based.
 INDICATORS = [
-    "macd",
-    "boll_ub",
-    "boll_lb",
-    "rsi_30",
-    "dx_30",
-    "close_30_sma",
-    "close_60_sma",
+    "macd",          # [0] Moving Average Convergence Divergence (momentum indicator)
+    "boll_ub",       # [1] Upper Bollinger Band (volatility measurement)
+    "boll_lb",       # [2] Lower Bollinger Band (volatility measurement)
+    "rsi_30",        # [3] 30-period Relative Strength Index (overbought/oversold)
+    "dx_30",         # [4] 30-period Directional Movement Index (trend strength)
+    "close_30_sma",  # [5] Simple Moving Average over 30 closes (short-term trend)
+    "close_60_sma",  # [6] Simple Moving Average over 60 closes (mid-term trend)
 ]
+
+# Turbulence calculation (market stress indicator)
+ENABLE_TURBULENCE = True
+
+# VIX - CBOE Volatility Index (real data from S&P 500)
+ENABLE_VIX = True
+VIX_SYMBOL = "^VIX"
 
 # Root folder for storing downloaded or cached market data.
 DATA_PATH = "raw_data"
@@ -73,10 +93,3 @@ RESULTS_PATH = "results"
 
 # Folder for all log files
 LOG_PATH = "logs"
-
-# Turbulence calculation (market stress indicator)
-ENABLE_TURBULENCE = True
-
-# VIX - CBOE Volatility Index (real data from S&P 500)
-ENABLE_VIX = True
-VIX_SYMBOL = "^VIX"  # CBOE Volatility Inde
