@@ -53,6 +53,18 @@ DATA_TIMEFRAME = "15m"
 # 5–7 years generally provide enough variety across market regimes (bull, bear, sideways).
 DATA_YEARS_BACK = 6
 
+# List of technical indicators used by the environment.
+# These correspond to FinRL's BTC example and must remain in this order because normalization is index-based.
+INDICATORS = [
+    "macd",
+    "boll_ub",
+    "boll_lb",
+    "rsi_30",
+    "dx_30",
+    "close_30_sma",
+    "close_60_sma",
+]
+
 # Root folder for storing downloaded or cached market data.
 DATA_PATH = "data"
 
