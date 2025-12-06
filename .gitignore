@@ -1,0 +1,30 @@
+# --- Python Basics ---
+__pycache__/
+*.pyc
+
+# --- Virtual Environment (Critical) ---
+# Based on your folder structure
+.venv/
+venv/
+env/
+
+# --- IDE Settings ---
+# You are using PyCharm/IntelliJ
+.idea/
+.vscode/
+
+# --- Data & Databases ---
+# ignore raw data folder
+data/raw_data/
+
+# Ignore local databases (like your bitcoin_data.db)
+*.db
+*.sqlite3
+
+# --- Logs & OS ---
+*.log
+.DS_Store
+
+# --- Secrets ---
+
+# config.py

@@ -66,10 +66,17 @@ INDICATORS = [
 ]
 
 # Root folder for storing downloaded or cached market data.
-DATA_PATH = "data"
+DATA_PATH = "raw_data"
 
 # Directory for saving training results, including: trained agent models, evaluation metrics, plots and cumulative return charts
 RESULTS_PATH = "results"
 
 # Folder for all log files
 LOG_PATH = "logs"
+
+# Turbulence calculation (market stress indicator)
+ENABLE_TURBULENCE = True
+
+# VIX - CBOE Volatility Index (real data from S&P 500)
+ENABLE_VIX = True
+VIX_SYMBOL = "^VIX"  # CBOE Volatility Inde
