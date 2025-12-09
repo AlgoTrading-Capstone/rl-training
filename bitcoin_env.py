@@ -3,7 +3,6 @@ import numpy as np
 from config import (
     INITIAL_BALANCE,
     LEVERAGE_LIMIT,
-    MAX_DEBT,
     TRANSACTION_FEE,
     GAMMA,
     DECISION_INTERVAL,
@@ -12,9 +11,11 @@ from config import (
     MIN_STOP_LOSS_PCT,
     MAX_STOP_LOSS_PCT,
     EXPOSURE_DEADZONE,
+    REWARD_FUNCTION,
 )
 
 from utils.normalization import normalize_state
+from reward_functions import REWARD_REGISTRY
 
 from trade_engine import (
     TradeConfig,
@@ -43,14 +44,14 @@ class BitcoinTradingEnv:
         # ------------------------------------------------------------
         self.initial_balance = INITIAL_BALANCE
         self.leverage_limit = LEVERAGE_LIMIT
-        self.max_debt = MAX_DEBT
         self.transaction_fee = TRANSACTION_FEE
         self.gamma = GAMMA
         self.decision_interval = DECISION_INTERVAL
 
+        self.reward_fn = REWARD_REGISTRY[REWARD_FUNCTION]
+
         self.trade_cfg = TradeConfig(
             leverage_limit=self.leverage_limit,
-            max_debt=self.max_debt,
             max_position_btc=MAX_POSITION_BTC,
             min_stop_pct=MIN_STOP_LOSS_PCT,
             max_stop_pct=MAX_STOP_LOSS_PCT,
@@ -242,7 +243,7 @@ class BitcoinTradingEnv:
             price=exec_price,
         )
 
-        reward = new_equity - old_equity
+        reward = self.reward_fn(old_equity, new_equity)
 
         # FinRL discounted accumulator
         self.gamma_return = self.gamma_return * self.gamma + reward

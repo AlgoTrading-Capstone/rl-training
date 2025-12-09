@@ -3,7 +3,7 @@ Trade engine for the Bitcoin RL environment.
 
 This module encapsulates all trading logic:
 - mapping actions to target exposure (long/short/flat)
-- enforcing leverage and debt constraints
+- enforcing leverage constraints
 - computing position changes (delta BTC)
 - applying transaction fees
 - managing stop-loss levels
@@ -11,6 +11,7 @@ This module encapsulates all trading logic:
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
+from config import SLIPPAGE_MEAN, SLIPPAGE_STD
 
 import numpy as np
 
@@ -24,7 +25,7 @@ class PositionState:
     """
     Holds the current state of the trading position.
     """
-    balance: float                       # USD balance (can be negative within MAX_DEBT limit)
+    balance: float                       # USD balance
     holdings: float                      # BTC position (positive = long, negative = short)
     entry_price: Optional[float] = None  # Entry price for the current (non-flat) position
     stop_price: Optional[float] = None   # Active stop-loss level
@@ -37,7 +38,6 @@ class TradeConfig:
     All fields are meant to be populated from the global config.py.
     """
     leverage_limit: float
-    max_debt: float
     max_position_btc: Optional[float]
     min_stop_pct: float
     max_stop_pct: float
@@ -134,7 +134,7 @@ def compute_delta_btc(current_holdings: float,
 
 
 # ------------------------------------------------------------
-# Trade execution with fees and debt constraint
+# Trade execution
 # ------------------------------------------------------------
 
 def apply_trade(balance: float,
@@ -143,8 +143,7 @@ def apply_trade(balance: float,
                 delta_btc: float,
                 cfg: TradeConfig) -> Tuple[float, float, float]:
     """
-    Apply a market trade (BUY/SELL) to balance and holdings with fees
-    and debt constraints.
+    Apply a market trade (BUY/SELL) to balance and holdings with fees.
 
     Returns:
         new_balance, new_holdings, effective_delta_btc
@@ -153,30 +152,16 @@ def apply_trade(balance: float,
         # No trade needed or invalid price
         return balance, holdings, 0.0
 
+    # Simulate slippage
+    slippage = np.random.normal(loc=SLIPPAGE_MEAN, scale=SLIPPAGE_STD)
+    exec_price = price * (1 + slippage)
+
     # Proposed trade notional (USD)
-    trade_notional = delta_btc * price
+    trade_notional = delta_btc * exec_price
     fee = abs(trade_notional) * cfg.fee_rate
 
     # Tentative new balance
     new_balance = balance - trade_notional - fee
-
-    # Enforce max debt: only relevant when trade_notional > 0 (buying reduces balance)
-    if cfg.max_debt is not None and new_balance < -cfg.max_debt and trade_notional > 0.0:
-        # Compute maximum affordable notional given debt constraint:
-        # balance - N * (1 + fee_rate) >= -max_debt
-        # N <= (balance + max_debt) / (1 + fee_rate)
-        max_affordable = (balance + cfg.max_debt) / (1.0 + cfg.fee_rate)
-
-        if max_affordable <= 0.0:
-            # Cannot buy anything without violating debt constraint
-            return balance, holdings, 0.0
-
-        # Scale down the trade
-        scale = max_affordable / trade_notional  # trade_notional > 0 here
-        trade_notional = max_affordable
-        delta_btc = delta_btc * scale
-        fee = abs(trade_notional) * cfg.fee_rate
-        new_balance = balance - trade_notional - fee
 
     # Update holdings
     new_holdings = holdings + delta_btc
@@ -234,7 +219,7 @@ def apply_action(a_pos: float,
     - derive target notional from a_pos (respect leverage)
     - apply BTC position cap
     - apply exposure deadzone
-    - compute delta_btc and execute trade with fees & debt constraint
+    - compute delta_btc and execute trade
     - update entry_price & stop_price (on new / flipped positions)
     """
 

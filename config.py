@@ -9,10 +9,6 @@ INITIAL_BALANCE = 100_000
 # Example: 2.0 means the agent may take positions up to 2x its current equity.
 LEVERAGE_LIMIT = 2.0
 
-# Maximum debt allowed (in USD).
-# The agent may let the account balance drop to -MAX_DEBT, but no further. Set to 0 to forbid debt entirely.
-MAX_DEBT = 0
-
 # Minimum and maximum stop-loss distance as a fraction of entry price.
 # Example: 0.01 = 1%, 0.05 = 5%.
 MIN_STOP_LOSS_PCT = 0.01
@@ -41,6 +37,12 @@ GAMMA = 0.990
 # DECISION_INTERVAL = 4 - agent acts every 4 candles, etc.
 # Decision frequency of 15 minutes (or every candle for 15m data) is recommended for balanced responsiveness.
 DECISION_INTERVAL = 1
+
+# Reward function selection: "return", "asymmetric"
+REWARD_FUNCTION = "asymmetric"
+
+# Downside weight for asymmetric reward function. Higher values increase the penalty for negative returns.
+DOWNSIDE_WEIGHT = 2.0
 
 # Percentage of the dataset used for training, the remainder is used for testing.
 # Example: 0.75 = 75% train, 25% test.
@@ -84,6 +86,15 @@ ENABLE_TURBULENCE = True
 # VIX - CBOE Volatility Index (real data from S&P 500)
 ENABLE_VIX = True
 VIX_SYMBOL = "^VIX"
+
+# Execution slippage applied to market orders (fractional impact on price)
+# SLIPPAGE_MEAN: average slippage as a fraction of price (e.g. 0.0001 = 0.01%)
+# SLIPPAGE_STD:  standard deviation of slippage noise (e.g. 0.00005 = ±0.005%)
+SLIPPAGE_MEAN = 0.0001
+SLIPPAGE_STD = 0.00005
+
+# Name of the machine where training is performed.
+TRAINING_MACHINE_NAME = "OmerPC"
 
 # Root folder for storing downloaded or cached market data.
 DATA_PATH = "raw_data"
