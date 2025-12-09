@@ -1,0 +1,37 @@
+{
+  "VolatilitySystem": {
+    "enabled": true,
+    "module": "strategies.volatility_system",
+    "class_name": "VolatilitySystem",
+    "timeframe": "1h",
+    "lookback_hours": 66
+  },
+  "OTTStrategy": {
+    "enabled": true,
+    "module": "strategies.ott_strategy",
+    "class_name": "OTTStrategy",
+    "timeframe": "1h",
+    "lookback_hours": 50
+  },
+  "SupertrendStrategy": {
+    "enabled": true,
+    "module": "strategies.supertrend_strategy",
+    "class_name": "SupertrendStrategy",
+    "timeframe": "1h",
+    "lookback_hours": 124
+  },
+  "BbandRsi": {
+    "enabled": true,
+    "module": "strategies.bband_rsi",
+    "class_name": "BbandRsi",
+    "timeframe": "1h",
+    "lookback_hours": 40
+  },
+  "AwesomeMacd": {
+    "enabled": true,
+    "module": "strategies.awesome_macd",
+    "class_name": "AwesomeMacd",
+    "timeframe": "1h",
+    "lookback_hours": 100
+  }
+}
