@@ -151,9 +151,6 @@ class CcxtProcessor:
 
                 # Progress indicator
                 progress_date = datetime.fromtimestamp(candles[-1][0] / 1000) #candels[-1][0] is the timestamp of the last candle in milliseconds and divide by 1000 to convert to seconds
-                #fromtimestamp -> Convert to human-readable date
-                print(f"   Fetched up to {progress_date.strftime('%Y-%m-%d')} " #strftime -> Format as string
-                      f"({len(all_candles)} candles so far)")
 
                 # Move to next chunk
                 current_since = candles[-1][0] + 1
@@ -334,7 +331,7 @@ class CcxtProcessor:
             start_date = df['date'].min().strftime('%Y-%m-%d')
             end_date = df['date'].max().strftime('%Y-%m-%d')
 
-            print(f"   Date range: {start_date} to {end_date}")
+            print(f"  Date range: {start_date} to {end_date}")
 
             # Download VIX data
             vix_data = yf.download(
@@ -389,8 +386,7 @@ class CcxtProcessor:
             max_vix = df['vix'].max()
             min_vix = df['vix'].min()
 
-            print(f"  Real VIX added")
-            print(f"   Coverage: {vix_coverage:.2f}%")
+            print(f"   Real VIX added")
             print(f"   Average VIX: {avg_vix:.2f}")
             print(f"   Range: {min_vix:.2f} - {max_vix:.2f}")
 

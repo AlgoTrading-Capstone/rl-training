@@ -114,9 +114,9 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    # "AwesomeMacd",         # Momentum strategy using MACD + Awesome Oscillator
-    # "BbandRsi",            # Mean-reversion using Bollinger Bands + RSI
-    # "OTTStrategy",         # Optimized Trend Tracker using CMO-based EMA
-    # "SupertrendStrategy",  # Triple Supertrend with optimized parameters
-    # "VolatilitySystem"     # ATR-based volatility breakout system
+    "AwesomeMacd",         # Momentum strategy using MACD + Awesome Oscillator
+    "BbandRsi",            # Mean-reversion using Bollinger Bands + RSI
+    "OTTStrategy",         # Optimized Trend Tracker using CMO-based EMA
+    "SupertrendStrategy",  # Triple Supertrend with optimized parameters
+    "VolatilitySystem"     # ATR-based volatility breakout system
 ]  # Empty by default - configure which strategies to enable
