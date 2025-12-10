@@ -120,6 +120,13 @@ def download_training_data():
     if config.ENABLE_VIX:
         df = processor.add_vix(df)
 
+    # Add strategy signals
+    if config.ENABLE_STRATEGIES and config.STRATEGY_LIST:
+        print(f"\n{'=' * 60}")
+        print("STEP 4: Generating Strategy Signals")
+        print(f"{'=' * 60}")
+        df = processor.add_strategy_signals(df, config.STRATEGY_LIST)
+
     # Save processed data
     processed_filename = f"{config.TRADING_PAIR.replace('/', '_')}_{config.DATA_TIMEFRAME}_processed.parquet"
     processed_file_path = processed_path / processed_filename

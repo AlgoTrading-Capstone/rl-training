@@ -408,14 +408,43 @@ class CcxtProcessor:
                 f"Check your internet connection and try again."
             )
 
+    def add_strategy_signals(
+            self,
+            df: pd.DataFrame,
+            strategy_list: list[str]
+    ) -> pd.DataFrame:
+        """
+        Add strategy signals (One-Hot encoded)
+        Controlled by config.ENABLE_STRATEGIES
 
+        Args:
+            df: DataFrame with OHLCV and technical indicators
+            strategy_list: List of strategy names to execute
+
+        Returns:
+            DataFrame with added strategy signal columns (4 per strategy)
+        """
+        if not config.ENABLE_STRATEGIES:
+            print("  Strategy signals disabled (config.ENABLE_STRATEGIES = False)")
+            return df
+
+        if not strategy_list:
+            print("  No strategies specified (config.STRATEGY_LIST is empty)")
+            return df
+
+        from data.strategy_processor import add_strategy_signals
+
+        print(f"\n  Generating strategy signals ({len(strategy_list)} strategies)...")
+        df = add_strategy_signals(df, strategy_list)
+
+        return df
 
     def df_to_array(
             self,
             df: pd.DataFrame,
             tech_indicator_list: list[str],
             if_vix: bool
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Convert DataFrame to numpy arrays for RL environment
 
@@ -425,7 +454,7 @@ class CcxtProcessor:
             if_vix: Whether to include VIX in the output
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array)
         """
         print("\n Converting to numpy arrays...")
 
@@ -444,7 +473,18 @@ class CcxtProcessor:
             df['turbulence'].values if 'turbulence' in df.columns else np.array([])
         )
 
-        # Handle NaN and Inf values
+        # Strategy signal array (One-Hot encoded)
+        # Columns follow pattern: strategy_{name}_flat, strategy_{name}_long, etc.
+        strategy_cols = sorted([col for col in df.columns if col.startswith('strategy_')])
+
+        if strategy_cols and config.ENABLE_STRATEGIES:
+            signal_array = df[strategy_cols].values  # Shape: (T, S*4)
+            # Already binary (0 or 1), no need for nan_to_num
+        else:
+            # No strategies enabled - return empty array
+            signal_array = np.zeros((len(df), 0), dtype=np.float32)
+
+        # Handle NaN and Inf values in numeric arrays
         tech_array = np.nan_to_num(tech_array, nan=0.0, posinf=0.0, neginf=0.0)
         turbulence_array = np.nan_to_num(turbulence_array, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -452,8 +492,9 @@ class CcxtProcessor:
         print(f"   Price array shape: {price_array.shape}")
         print(f"   Tech array shape: {tech_array.shape}")
         print(f"   Turbulence array shape: {turbulence_array.shape}")
+        print(f"   Signal array shape: {signal_array.shape}")
 
-        return price_array, tech_array, turbulence_array
+        return price_array, tech_array, turbulence_array, signal_array
 
 
 class DataProcessor:
@@ -512,10 +553,18 @@ class DataProcessor:
         """Add VIX proxy"""
         return self.processor.add_vix(df)
 
+    def add_strategy_signals(
+            self,
+            df: pd.DataFrame,
+            strategy_list: list[str]
+    ) -> pd.DataFrame:
+        """Add strategy signals (One-Hot encoded)"""
+        return self.processor.add_strategy_signals(df, strategy_list)
+
     def df_to_array(
             self,
             df: pd.DataFrame,
             if_vix: bool
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Convert DataFrame to arrays"""
         return self.processor.df_to_array(df, self.tech_indicator_list, if_vix)

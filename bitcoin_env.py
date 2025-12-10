@@ -32,12 +32,17 @@ class BitcoinTradingEnv:
         RL Trading Environment for Bitcoin.
         price_ary:  np.ndarray of shape (T, P) - price features
         tech_ary:   np.ndarray of shape (T, K) - technical indicators
-        signal_ary: np.ndarray of shape (T, S) - strategy outputs
+        signal_ary: np.ndarray of shape (T, S*4) - strategy outputs (One-Hot encoded)
         mode:       "train" | "test"
         """
 
         assert mode in ["train", "test"], "mode must be 'train' or 'test'."
         self.mode = mode
+
+        # Handle empty signal array (backward compatibility)
+        if signal_ary.shape[1] == 0:
+            print("Warning: No strategy signals (ENABLE_STRATEGIES=False or empty STRATEGY_LIST)")
+            print("   Environment will run without strategy features in state space")
 
         # ------------------------------------------------------------
         # Load configuration values

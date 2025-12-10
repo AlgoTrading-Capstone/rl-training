@@ -9,9 +9,11 @@ from .base_strategy import (
     SignalType,
     StrategyRecommendation
 )
+from .registry import StrategyRegistry
 
 __all__ = [
     'BaseStrategy',
     'SignalType',
-    'StrategyRecommendation'
+    'StrategyRecommendation',
+    'StrategyRegistry'
 ]

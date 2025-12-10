@@ -104,3 +104,23 @@ RESULTS_PATH = "results"
 
 # Folder for all log files
 LOG_PATH = "logs"
+
+# ============================================================
+# Strategy Integration Configuration
+# ============================================================
+
+# Enable/disable strategy signals in the RL pipeline
+# When True, strategies generate One-Hot encoded signals added to state space
+# When False, environment runs with no strategy features (backward compatible)
+ENABLE_STRATEGIES = True
+
+# List of strategies to include (names must match class names in strategies/registry.py)
+# Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
+# Empty list = no strategies (signal_ary will be empty)
+STRATEGY_LIST = [
+    # "AwesomeMacd",         # Momentum strategy using MACD + Awesome Oscillator
+    # "BbandRsi",            # Mean-reversion using Bollinger Bands + RSI
+    # "OTTStrategy",         # Optimized Trend Tracker using CMO-based EMA
+    # "SupertrendStrategy",  # Triple Supertrend with optimized parameters
+    # "VolatilitySystem"     # ATR-based volatility breakout system
+]  # Empty by default - configure which strategies to enable

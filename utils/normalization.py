@@ -49,8 +49,8 @@ def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
     # Technical indicators - per-index scaling
     norm_tech = tech_vec * TECH_SCALE_FACTORS
 
-    # Strategy signals (LONG/SHORT/HOLD/FLAT → numeric)
-    norm_signal = signal_vec * 2**-1
+    # Strategy signals
+    norm_signal = signal_vec  # Keep as-is: [0, 1, 0, 0, 1, 0, 0, 0, ...]
 
     # Holdings (BTC position)
     norm_holdings = holdings * 2**-4
