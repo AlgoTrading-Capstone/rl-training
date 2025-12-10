@@ -1,6 +1,9 @@
 """
 Download historical Bitcoin market data using CCXT
 Run this script once to download training data
+
+This is a standalone script for data exploration and testing.
+For integrated training runs, use main.py instead.
 """
 
 import os
@@ -13,6 +16,18 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import config
 from data.data_processor import DataProcessor
+
+# ============================================================
+# Backward compatibility: use default paths if config variables removed
+# ============================================================
+DEFAULT_DATA_PATH = "raw_data"
+DEFAULT_YEARS_BACK = 6
+
+# Check if config has the old variables, otherwise use defaults
+# Can be overridden via environment variables:
+#   RL_DATA_PATH=mydata RL_DATA_YEARS_BACK=2 python data/download_data.py
+DATA_PATH = getattr(config, 'DATA_PATH', os.getenv("RL_DATA_PATH", DEFAULT_DATA_PATH))
+DATA_YEARS_BACK = getattr(config, 'DATA_YEARS_BACK', int(os.getenv("RL_DATA_YEARS_BACK", DEFAULT_YEARS_BACK)))
 
 
 def download_training_data():
@@ -27,7 +42,7 @@ def download_training_data():
 
     # Calculate date range
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=365 * config.DATA_YEARS_BACK)
+    start_date = end_date - timedelta(days=365 * DATA_YEARS_BACK)
 
     # Format dates
     start_date_str = start_date.strftime('%Y-%m-%d')
@@ -39,33 +54,25 @@ def download_training_data():
     print(f"   Trading Pair: {config.TRADING_PAIR}")
     print(f"   Timeframe: {config.DATA_TIMEFRAME}")
     print(f"   Period: {start_date_str} to {end_date_str_download}")
-    print(f"   Years: {config.DATA_YEARS_BACK}")
+    print(f"   Years: {DATA_YEARS_BACK}")
     print(f"   Download ID: {timestamp}")
+    print(f"   Data path: {DATA_PATH}")
 
     # Create timestamped folders
-    downloads_path = Path(config.DATA_PATH) / "downloads" / timestamp
-    processed_path = Path(config.DATA_PATH) / "processed" / timestamp
+    downloads_path = Path(DATA_PATH) / "downloads" / timestamp
+    processed_path = Path(DATA_PATH) / "processed" / timestamp
 
     # Check for previous downloads BEFORE creating new folders
-    downloads_root = Path(config.DATA_PATH) / "downloads"
+    downloads_root = Path(DATA_PATH) / "downloads"
     if downloads_root.exists():
         # Filter out the current timestamp folder (in case it already exists)
-        previous_downloads = sorted([d for d in downloads_root.iterdir()if d.is_dir() and d.name != timestamp])
+        previous_downloads = sorted([d for d in downloads_root.iterdir() if d.is_dir() and d.name != timestamp])
         if previous_downloads:
             print(f"\nPrevious downloads found: {len(previous_downloads)}")
             for prev in previous_downloads[-3:]:
                 print(f"   - {prev.name}")
     downloads_path.mkdir(parents=True, exist_ok=True)
     processed_path.mkdir(parents=True, exist_ok=True)
-
-    # Check for previous downloads
-    downloads_root = Path(config.DATA_PATH) / "downloads"
-    if downloads_root.exists():
-        previous_downloads = sorted([d for d in downloads_root.iterdir() if d.is_dir()])
-        if previous_downloads:
-            print(f"\nPrevious downloads found: {len(previous_downloads)}")
-            for prev in previous_downloads[-3:]:
-                print(f"   - {prev.name}")
 
     # Initialize processor
     processor = DataProcessor(

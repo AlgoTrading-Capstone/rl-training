@@ -64,9 +64,7 @@ TRADING_PAIR = "BTC/USDT"
 # 15-minute candles offer a strong balance between noise reduction and responsiveness for crypto RL tasks.
 DATA_TIMEFRAME = "15m"
 
-# Number of years of historical data to download.
-# 5–7 years generally provide enough variety across market regimes (bull, bear, sideways).
-DATA_YEARS_BACK = 6
+# Date range is now specified by user input (start_date and end_date)
 
 # List of technical indicators used by the environment.
 # These correspond to FinRL's BTC example and must remain in this order because normalization is index-based.
@@ -96,10 +94,8 @@ SLIPPAGE_STD = 0.00005
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"
 
-# Root folder for storing downloaded or cached market data.
-DATA_PATH = "raw_data"
-
 # Directory for saving training results, including: trained agent models, evaluation metrics, plots and cumulative return charts
+# Data will be stored per-run in: results/{model_name}_{machine_name}/data/
 RESULTS_PATH = "results"
 
 # Folder for all log files

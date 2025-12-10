@@ -95,6 +95,8 @@ def collect_user_input():
         "end_date": end_str,
         "created_at": datetime.utcnow().isoformat(),
         "results_path": run_path,
+        "data_base_path": os.path.join(run_path, "data"),
+        "data_download_status": "pending",
     }
 
     # Save metadata.json
