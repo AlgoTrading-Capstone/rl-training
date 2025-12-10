@@ -4,7 +4,6 @@ from config import (
     INITIAL_BALANCE,
     LEVERAGE_LIMIT,
     TRANSACTION_FEE,
-    GAMMA,
     DECISION_INTERVAL,
     TRAIN_TEST_SPLIT,
     MAX_POSITION_BTC,
@@ -51,7 +50,6 @@ class BitcoinTradingEnv:
         self.initial_balance = INITIAL_BALANCE
         self.leverage_limit = LEVERAGE_LIMIT
         self.transaction_fee = TRANSACTION_FEE
-        self.gamma = GAMMA
         self.decision_interval = DECISION_INTERVAL
 
         self.reward_fn = REWARD_REGISTRY[REWARD_FUNCTION]
@@ -100,7 +98,6 @@ class BitcoinTradingEnv:
             entry_price=None,
             stop_price=None,
         )
-        self.gamma_return = 0.0  # Discounted return accumulator
         self.episode_return = 0.0  # Final episode profit ratio (total_asset / initial_balance)
 
         # ------------------------------------------------------------
@@ -148,7 +145,6 @@ class BitcoinTradingEnv:
             entry_price=None,
             stop_price=None,
         )
-        self.gamma_return = 0.0
         self.episode_return = 0.0
 
         # Load first timestep features
@@ -258,9 +254,6 @@ class BitcoinTradingEnv:
 
         reward = self.reward_fn(old_equity, new_equity)
 
-        # FinRL discounted accumulator
-        self.gamma_return = self.gamma_return * self.gamma + reward
-
         # -------------------------------
         # Advance timestep
         # -------------------------------
@@ -285,13 +278,8 @@ class BitcoinTradingEnv:
             holdings=self.position.holdings,
         )
 
-        # -------------------------------
-        # At the final timestep we add the accumulated discounted rewards (gamma_return) to the last reward.
-        # This gives the agent a signal about the performance of the entire episode.
-        # -------------------------------
+        # Calculate final episode return
         if done:
-            reward += self.gamma_return
-            self.gamma_return = 0.0
             self.episode_return = new_equity / self.initial_balance
 
         # -------------------------------

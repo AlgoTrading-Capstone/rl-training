@@ -38,7 +38,7 @@ GAMMA = 0.990
 # Decision frequency of 15 minutes (or every candle for 15m data) is recommended for balanced responsiveness.
 DECISION_INTERVAL = 1
 
-# Reward function selection: "return", "asymmetric"
+# Reward function selection: "log_return", "asymmetric"
 REWARD_FUNCTION = "asymmetric"
 
 # Downside weight for asymmetric reward function. Higher values increase the penalty for negative returns.
