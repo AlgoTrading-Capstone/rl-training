@@ -27,13 +27,14 @@ from trade_engine import (
 
 class BitcoinTradingEnv:
 
-    def __init__(self, price_ary, tech_ary, signal_ary, mode="train"):
+    def __init__(self, price_ary, tech_ary, turbulence_array, signal_ary, mode="train"):
         """
         RL Trading Environment for Bitcoin.
-        price_ary:  np.ndarray of shape (T, P) - price features
-        tech_ary:   np.ndarray of shape (T, K) - technical indicators
-        signal_ary: np.ndarray of shape (T, S*4) - strategy outputs (One-Hot encoded)
-        mode:       "train" | "test"
+        price_ary:        np.ndarray - price features
+        tech_ary:         np.ndarray - technical indicators
+        turbulence_array: np.ndarray - turbulence & VIX
+        signal_ary:       np.ndarray - strategy outputs
+        mode:             "train" | "test"
         """
 
         assert mode in ["train", "test"], "mode must be 'train' or 'test'."
@@ -73,10 +74,12 @@ class BitcoinTradingEnv:
         if mode == "train":
             self.price_ary = price_ary[:split_idx]
             self.tech_ary = tech_ary[:split_idx]
+            self.turbulence_ary = turbulence_array[:split_idx]
             self.signal_ary = signal_ary[:split_idx]
         else:  # test mode
             self.price_ary = price_ary[split_idx:]
             self.tech_ary = tech_ary[split_idx:]
+            self.turbulence_ary = turbulence_array[split_idx:]
             self.signal_ary = signal_ary[split_idx:]
 
         # ------------------------------------------------------------
@@ -84,6 +87,7 @@ class BitcoinTradingEnv:
         # ------------------------------------------------------------
         self.price_ary = self.price_ary[::self.decision_interval]
         self.tech_ary = self.tech_ary[::self.decision_interval]
+        self.turbulence_ary = self.turbulence_ary[::self.decision_interval]
         self.signal_ary = self.signal_ary[::self.decision_interval]
 
         # ------------------------------------------------------------
@@ -104,10 +108,11 @@ class BitcoinTradingEnv:
         # ------------------------------------------------------------
         price_dim = self.price_ary.shape[1]
         tech_dim = self.tech_ary.shape[1]
+        turbulence_dim = self.turbulence_ary.shape[1]
         signal_dim = self.signal_ary.shape[1]
 
-        # State includes: balance, price features, indicators, strategy signals, position size
-        self.state_dim = 1 + price_dim + tech_dim + signal_dim + 1
+        # State includes: balance, price features, indicators, turbulence, strategy signals, position size
+        self.state_dim = 1 + price_dim + tech_dim + turbulence_dim + signal_dim + 1
 
         # Action space: action = [a_pos, a_sl]
         # a_pos ∈ [-1, +1] - desired exposure: -1 = max short, 0 = flat, +1 = max long
@@ -123,6 +128,7 @@ class BitcoinTradingEnv:
         # Load first observation (day = 0)
         self.current_price = self.price_ary[0]
         self.current_tech = self.tech_ary[0]
+        self.current_turbulence = self.turbulence_ary[0]
         self.current_signal = self.signal_ary[0]
 
 
@@ -148,6 +154,7 @@ class BitcoinTradingEnv:
         # Load first timestep features
         self.current_price = self.price_ary[self.day]
         self.current_tech = self.tech_ary[self.day]
+        self.current_turbulence = self.turbulence_ary[self.day]
         self.current_signal = self.signal_ary[self.day]
 
         # Build initial normalized state
@@ -155,6 +162,7 @@ class BitcoinTradingEnv:
             balance=self.position.balance,
             price_vec=self.current_price,
             tech_vec=self.current_tech,
+            turbulence_vec=self.current_turbulence,
             signal_vec=self.current_signal,
             holdings=self.position.holdings,
         )
@@ -262,6 +270,7 @@ class BitcoinTradingEnv:
         if not done:
             self.current_price = self.price_ary[self.day]
             self.current_tech = self.tech_ary[self.day]
+            self.current_turbulence = self.turbulence_ary[self.day]
             self.current_signal = self.signal_ary[self.day]
 
         # -------------------------------
@@ -271,6 +280,7 @@ class BitcoinTradingEnv:
             balance=self.position.balance,
             price_vec=self.current_price,
             tech_vec=self.current_tech,
+            turbulence_vec=self.current_turbulence,
             signal_vec=self.current_signal,
             holdings=self.position.holdings,
         )

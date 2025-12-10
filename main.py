@@ -6,7 +6,9 @@ from utils.user_input import collect_user_input
 
 
 def main():
-    print("\n=== RL Training Execution ===\n")
+    print("=" * 60)
+    print("RL Training Execution")
+    print("=" * 60)
 
     # --------------------------------------------------------
     # STEP 1: Collect user input + create run folder + metadata

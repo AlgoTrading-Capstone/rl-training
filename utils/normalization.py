@@ -17,7 +17,7 @@ TECH_SCALE_FACTORS = np.array([
 ], dtype=np.float32)
 
 
-def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
+def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, holdings):
     """
     Apply FinRL-style normalization to all components of the state.
 
@@ -29,6 +29,8 @@ def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
         Price features for the current timestep.
     tech_vec : np.ndarray
         Technical indicator features.
+    turbulence_vec : np.ndarray
+        Turbulence & VIX features.
     signal_vec : np.ndarray
         Strategy signal features (already numeric).
     holdings : float
@@ -49,15 +51,18 @@ def normalize_state(balance, price_vec, tech_vec, signal_vec, holdings):
     # Technical indicators - per-index scaling
     norm_tech = tech_vec * TECH_SCALE_FACTORS
 
+    # Turbulence & VIX
+    norm_turbulence = ???
+
     # Strategy signals
-    norm_signal = signal_vec  # Keep as-is: [0, 1, 0, 0, 1, 0, 0, 0, ...]
+    norm_signal = signal_vec  # Keep as-is (0/1 encoding)
 
     # Holdings (BTC position)
     norm_holdings = holdings * 2**-4
 
     # Final state vector
     state = np.hstack(
-        (norm_balance, norm_price, norm_tech, norm_signal, norm_holdings)
+        (norm_balance, norm_price, norm_tech, norm_turbulence, norm_signal, norm_holdings)
     ).astype(np.float32)
 
     return state
