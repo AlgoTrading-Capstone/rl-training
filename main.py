@@ -2,7 +2,8 @@
 Main orchestrator for RL training/testing pipeline.
 """
 
-from data.data_pipeline import download_and_process_data, load_processed_data
+import config
+from data.data_manager import DataManager
 from utils.user_input import collect_user_input
 
 
@@ -17,28 +18,33 @@ def main():
     metadata, run_path = collect_user_input()
 
     # --------------------------------------------------------
-    # STEP 2: Download and process data
+    # STEP 2: Initialize DataManager and process data
     # --------------------------------------------------------
     try:
-        metadata = download_and_process_data(metadata, run_path)
-    except RuntimeError as e:
-        print(f"\n{'=' * 60}")
-        print(f"ERROR: {e}")
-        print(f"{'=' * 60}")
-        print("\nTraining aborted due to data download failure.")
-        print(f"Partial data may be available in: {run_path}/data/")
-        return
+        # Initialize DataManager with integrated mode (results/{model}/data/)
+        manager = DataManager(
+            exchange=config.EXCHANGE_NAME,
+            trading_pair=config.TRADING_PAIR,
+            base_timeframe=config.DATA_TIMEFRAME,
+            storage_path=f"{run_path}/data"
+        )
 
-    # --------------------------------------------------------
-    # STEP 3: Load processed data into arrays
-    # --------------------------------------------------------
-    try:
-        price_array, tech_array, turbulence_array, signal_array = load_processed_data(run_path)
-    except (FileNotFoundError, ValueError) as e:
+        # Get processed arrays using smart incremental download
+        strategy_list = config.STRATEGY_LIST if config.ENABLE_STRATEGIES else []
+        price_array, tech_array, turbulence_array, signal_array = manager.get_arrays_for_training(
+            start_date=metadata['start_date'],
+            end_date=metadata['end_date'],
+            strategy_list=strategy_list
+        )
+
+    except Exception as e:
         print(f"\n{'=' * 60}")
         print(f"ERROR: {e}")
         print(f"{'=' * 60}")
-        print("\nTraining aborted due to data loading failure.")
+        print("\nTraining aborted due to data processing failure.")
+        print(f"Partial data may be available in: {run_path}/data/")
+        import traceback
+        traceback.print_exc()
         return
 
     # --------------------------------------------------------

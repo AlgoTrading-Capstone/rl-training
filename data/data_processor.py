@@ -93,6 +93,12 @@ class CcxtProcessor:
         # Create DataFrame
         df = pd.DataFrame(all_data)
 
+        # Handle empty downloads (e.g., future dates)
+        if len(df) == 0:
+            print(" Warning: No data available for requested range")
+            # Return empty DataFrame with correct columns
+            return pd.DataFrame(columns=['date', 'open', 'high', 'low', 'close', 'volume', 'tic'])
+
         # Add human-readable date
         df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
 

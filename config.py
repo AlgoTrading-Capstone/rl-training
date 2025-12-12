@@ -120,3 +120,8 @@ STRATEGY_LIST = [
     "SupertrendStrategy",  # Triple Supertrend with optimized parameters
     "VolatilitySystem"     # ATR-based volatility breakout system
 ]  # Empty by default - configure which strategies to enable
+
+# Maximum number of parallel workers for strategy signal processing
+# None = use half of available CPU cores
+# Set to 1 to disable parallel processing (sequential mode)
+MAX_STRATEGY_WORKERS = None
