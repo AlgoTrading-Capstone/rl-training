@@ -2,6 +2,50 @@
 Configuration file
 """
 
+# RL algorithm selection: "PPO", "SAC"
+# PPO: on-policy, more stable, slower, good baseline
+# SAC: off-policy, more sample-efficient, higher variance
+RL_MODEL = "PPO"
+
+# Discount factor (gamma) for future rewards - determines how much the agent values long-term gains versus immediate rewards.
+# Typical range: 0.970 – 0.995
+GAMMA = 0.990
+
+# Learning rate for neural network optimization- Controls how aggressively the agent updates its policy/value networks.
+# Typical ranges:
+# PPO: 1e-4 – 3e-4
+# SAC: 3e-4 – 1e-3
+LEARNING_RATE = 3e-4
+
+# Hidden layer dimensions for Actor & Critic networks.
+# IMPORTANT: First layer should be >= state_dim
+# Recommended defaults:
+# Medium state (~15-33 strategies): [128, 128]
+# Large  state (33+ strategies): [256, 256]
+NET_DIMS = [128, 128]
+
+# Maximum number of environment interaction steps for training.
+# This value does NOT represent the length of the dataset. Instead, it controls how many TOTAL steps the agent is allowed to interact with the environment across ALL episodes.
+# TOTAL_TRAINING_STEPS ≈ (number of desired passes over the data) × max_step
+# Example:
+# One year of data with 15-minute candles: ~35,000 candles -> max_step ≈ 35,000
+# TOTAL_TRAINING_STEPS = 300,000
+# 300,000 / 35,000 ≈ 8–9 full episodes
+# The agent sees the same historical year ~9 times
+# ---------------------
+# Practical Guidelines:
+# ---------------------
+# 1–2 episodes   : Too little for learning
+# 5–10 episodes  : Reasonable initial experiments
+# 10–20 episodes : Serious training
+# 30+ episodes   : Risk of overfitting (unless strongly regularized)
+# ------
+# Notes:
+# ------
+# PPO usually requires more total steps than off-policy methods (e.g. SAC)
+# Increasing TOTAL_TRAINING_STEPS increases training time linearly
+TOTAL_TRAINING_STEPS = int(3e5)
+
 # Initial cash balance in USD at the beginning of each training/test episode (one full simulation run over a selected historical time window).
 INITIAL_BALANCE = 100_000
 
@@ -25,10 +69,6 @@ MAX_POSITION_BTC = 1.0
 # Transaction fee applied to each executed MARKET (taker) order (as a fraction).
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
 TRANSACTION_FEE = 0.0005
-
-# Discount factor (gamma) for future rewards - determines how much the agent values long-term gains versus immediate rewards.
-# Typical range: 0.970 – 0.995
-GAMMA = 0.990
 
 # Number of candles between agent decisions.
 # Example:

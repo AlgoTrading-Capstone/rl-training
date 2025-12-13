@@ -1,10 +1,13 @@
 """
 Main orchestrator for RL training/testing pipeline.
 """
-
 import config
 from data.data_manager import DataManager
 from utils.user_input import collect_user_input
+from bitcoin_env import BitcoinTradingEnv
+from adapters.elegantrl_bitcoin_env import ElegantRLBitcoinEnv
+from rl_configs import build_elegantrl_config
+from elegantrl.train.run import train_agent
 
 
 def main():
@@ -48,30 +51,83 @@ def main():
         return
 
     # --------------------------------------------------------
-    # STEP 4: TODO - Initialize RL environment
+    # STEP 3: Initialize RL environments for training and evaluation
     # --------------------------------------------------------
-    # NOTE: BitcoinTradingEnv takes only 3 arrays (price, tech, signal)
-    # turbulence_array is not used by the current environment implementation
+    try:
+        # Domain train environment (pure)
+        train_bitcoin_env = BitcoinTradingEnv(
+            price_array,
+            tech_array,
+            turbulence_array,
+            signal_array,
+            mode="train",
+        )
+        # ElegantRL-compatible train environment
+        train_rl_env = ElegantRLBitcoinEnv(train_bitcoin_env)
 
-    # from bitcoin_env import BitcoinTradingEnv
-    # train_env = BitcoinTradingEnv(price_array, tech_array, signal_array, mode="train")
-    # test_env = BitcoinTradingEnv(price_array, tech_array, signal_array, mode="test")
+        # Domain eval environment (pure)
+        eval_bitcoin_env = BitcoinTradingEnv(
+            price_array,
+            tech_array,
+            turbulence_array,
+            signal_array,
+            mode="test",
+        )
+        # ElegantRL-compatible eval environment
+        eval_rl_env = ElegantRLBitcoinEnv(eval_bitcoin_env)
 
-    print("\n" + "=" * 60)
-    print("DATA READY FOR TRAINING")
-    print("=" * 60)
-    print("\nNext steps:")
-    print("  1. Initialize BitcoinTradingEnv with (price_array, tech_array, signal_array)")
-    print("  2. Setup RL agent (ElegantRL/FinRL)")
-    print("  3. Train agent")
-    print("  4. Evaluate and save results")
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR: {e}")
+        print(f"{'=' * 60}")
+        print("\nTraining aborted due to environment initialization failure.")
+        return
 
     # --------------------------------------------------------
-    # STEP 5: TODO - Train agent
+    # STEP 4: Build ElegantRL training configuration
     # --------------------------------------------------------
+    try:
+        erl_config = build_elegantrl_config(
+            train_env=train_rl_env,
+            eval_env=eval_rl_env,
+            run_path=run_path,
+        )
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR: {e}")
+        print(f"{'=' * 60}")
+        print("\nTraining aborted during RL configuration build.")
+        print("Check rl_configs.py and config.py for invalid or inconsistent settings.")
+        import traceback
+        traceback.print_exc()
+        return
 
     # --------------------------------------------------------
-    # STEP 6: TODO - Evaluate and save results
+    # STEP 5: Train and test RL agent using ElegantRL
+    # --------------------------------------------------------
+    try:
+        train_agent(erl_config)
+
+    except KeyboardInterrupt:
+        print(f"\n{'=' * 60}")
+        print("TRAINING INTERRUPTED BY USER")
+        print(f"{'=' * 60}")
+        print("Graceful shutdown requested. Partial results may be saved.")
+        return
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR DURING TRAINING: {e}")
+        print(f"{'=' * 60}")
+        print("\nTraining aborted due to runtime error.")
+        print("Check logs and hyperparameters for instability or misconfiguration.")
+        import traceback
+        traceback.print_exc()
+        return
+
+    # --------------------------------------------------------
+    # STEP 6: TODO - results
     # --------------------------------------------------------
 
     print("\n=== Training Session Complete ===\n")
