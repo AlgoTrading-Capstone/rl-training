@@ -70,6 +70,14 @@ def build_elegantrl_config(
         raise ValueError(f"Unsupported RL_MODEL='{RL_MODEL}'. Supported: {SUPPORTED_RL_MODELS}")
 
     if RL_MODEL == "PPO":
+        # Safety Check for PPO Horizon
+        horizon = PPO_CONFIG["horizon_len"]
+        if train_max_step < horizon:
+            raise ValueError(
+                f"Training data length ({train_max_step}) is smaller than PPO horizon_len ({horizon}). "
+                "Collect more data or decrease horizon_len."
+            )
+
         agent_class = AgentPPO
         algo_cfg = PPO_CONFIG
     else:
@@ -118,7 +126,7 @@ def build_elegantrl_config(
     erl_config.break_step = TOTAL_TRAINING_STEPS
     erl_config.gamma = GAMMA
     erl_config.learning_rate = LEARNING_RATE
-    erl_config.net_dims = NET_DIMS
+    erl_config.net_dims = list(NET_DIMS)  # Make a copy
     erl_config.if_discrete = train_env_args["if_discrete"]
 
     # Algorithm-specific parameters (set even if None, e.g. SAC alpha=None)
