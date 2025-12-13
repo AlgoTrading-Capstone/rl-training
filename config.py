@@ -70,14 +70,6 @@ MAX_POSITION_BTC = 1.0
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
 TRANSACTION_FEE = 0.0005
 
-# Number of candles between agent decisions.
-# Example:
-# DECISION_INTERVAL = 1 - agent acts every candle
-# DECISION_INTERVAL = 2 - agent acts every 2 candles
-# DECISION_INTERVAL = 4 - agent acts every 4 candles, etc.
-# Decision frequency of 15 minutes (or every candle for 15m data) is recommended for balanced responsiveness.
-DECISION_INTERVAL = 1
-
 # Reward function selection: "log_return", "asymmetric"
 REWARD_FUNCTION = "asymmetric"
 

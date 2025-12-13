@@ -4,7 +4,6 @@ from config import (
     INITIAL_BALANCE,
     LEVERAGE_LIMIT,
     TRANSACTION_FEE,
-    DECISION_INTERVAL,
     TRAIN_TEST_SPLIT,
     MAX_POSITION_BTC,
     MIN_STOP_LOSS_PCT,
@@ -51,7 +50,6 @@ class BitcoinTradingEnv:
         self.initial_balance = INITIAL_BALANCE
         self.leverage_limit = LEVERAGE_LIMIT
         self.transaction_fee = TRANSACTION_FEE
-        self.decision_interval = DECISION_INTERVAL
 
         self.reward_fn = REWARD_REGISTRY[REWARD_FUNCTION]
 
@@ -80,14 +78,6 @@ class BitcoinTradingEnv:
             self.tech_ary = tech_ary[split_idx:]
             self.turbulence_ary = turbulence_array[split_idx:]
             self.signal_ary = signal_ary[split_idx:]
-
-        # ------------------------------------------------------------
-        # Apply decision interval (downsampling)
-        # ------------------------------------------------------------
-        self.price_ary = self.price_ary[::self.decision_interval]
-        self.tech_ary = self.tech_ary[::self.decision_interval]
-        self.turbulence_ary = self.turbulence_ary[::self.decision_interval]
-        self.signal_ary = self.signal_ary[::self.decision_interval]
 
         # ------------------------------------------------------------
         # RL Environment internal state
@@ -209,7 +199,7 @@ class BitcoinTradingEnv:
         )
 
         # -------------------------------
-        # STOP-LOSS CHECK BEFORE ACTION
+        # STOP-LOSS CHECK (intra-candle)
         # -------------------------------
         stop_triggered = False
         stop_exec_price = None
@@ -228,8 +218,11 @@ class BitcoinTradingEnv:
                     stop_triggered = True
                     stop_exec_price = self.position.stop_price
 
-        # If stop-loss triggers - force close and skip agent action
+        # -------------------------------
+        # Apply trading logic
+        # -------------------------------
         if stop_triggered:
+            # Forced exit at stop price (with slippage inside engine)
             result = close_position(
                 price=stop_exec_price,
                 state=self.position,
@@ -259,12 +252,15 @@ class BitcoinTradingEnv:
         reward = self.reward_fn(old_equity, new_equity)
 
         # -------------------------------
-        # Advance timestep
+        # Determine episode termination
         # -------------------------------
-        self.day += 1
-        done = (self.day >= self.max_step - 1)
+        done = (self.day == self.max_step - 1)
 
+        # -------------------------------
+        # Advance time if not done
+        # -------------------------------
         if not done:
+            self.day += 1
             self.current_price = self.price_ary[self.day]
             self.current_tech = self.tech_ary[self.day]
             self.current_turbulence = self.turbulence_ary[self.day]
@@ -282,7 +278,9 @@ class BitcoinTradingEnv:
             holdings=self.position.holdings,
         )
 
-        # Calculate final episode return
+        # -------------------------------
+        # Final episode return
+        # -------------------------------
         if done:
             self.episode_return = new_equity / self.initial_balance
 
