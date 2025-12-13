@@ -9,9 +9,11 @@ Handles:
 """
 
 import json
+import shutil
 import time
 import multiprocessing as mp
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -211,15 +213,24 @@ class DataManager:
             exchange: CCXT exchange name (default: config.EXCHANGE_NAME)
             trading_pair: Trading symbol (default: config.TRADING_PAIR)
             base_timeframe: Base data timeframe (default: config.DATA_TIMEFRAME)
-            storage_path: Root storage path (default: "data")
+            storage_path: Root storage path (default: config.DATA_ROOT_PATH)
+                         DEPRECATED - use config.DATA_ROOT_PATH instead
         """
         self.exchange = exchange or config.EXCHANGE_NAME
         self.trading_pair = trading_pair or config.TRADING_PAIR
         self.base_timeframe = base_timeframe or config.DATA_TIMEFRAME
-        self.storage_path = Path(storage_path or "data")
 
-        # Ensure storage directories exist
-        (self.storage_path / "raw").mkdir(parents=True, exist_ok=True)
+        # Use shared data root (new architecture)
+        # storage_path parameter is deprecated but kept for backward compatibility
+        self.storage_path = Path(storage_path or config.DATA_ROOT_PATH)
+
+        # Create complete directory structure for Feature Store
+        # training_data/ - PORTABLE folder (copy to other machines)
+        (self.storage_path / "training_data" / "raw").mkdir(parents=True, exist_ok=True)
+        (self.storage_path / "training_data" / "processed").mkdir(parents=True, exist_ok=True)
+        # archived/ - LOCAL HISTORY folder (stays on this machine)
+        (self.storage_path / "archived" / "raw").mkdir(parents=True, exist_ok=True)
+        (self.storage_path / "archived" / "processed").mkdir(parents=True, exist_ok=True)
 
         # Initialize CcxtProcessor for downloads
         self.processor = CcxtProcessor(self.exchange)
@@ -244,6 +255,110 @@ class DataManager:
         # Clean pair name (replace / with _)
         pair_clean = self.trading_pair.replace('/', '_')
         return f"{self.exchange}_{pair_clean}_{self.base_timeframe}.parquet"
+
+    def _get_processed_filename(self) -> str:
+        """
+        Generate processed data filename (with indicators + strategies).
+
+        Returns: "exchange_pair_timeframe_processed.parquet"
+        Example: "binance_BTC_USDT_15m_processed.parquet"
+        """
+        base = self._get_storage_filename()
+        return base.replace(".parquet", "_processed.parquet")
+
+    def _validate_date_range(self, df: pd.DataFrame, start_date: str, end_date: str) -> bool:
+        """
+        Check if DataFrame covers requested date range (superset match).
+
+        Args:
+            df: DataFrame with 'date' column
+            start_date: Start date "DD-MM-YYYY" or "YYYY-MM-DD"
+            end_date: End date "DD-MM-YYYY" or "YYYY-MM-DD"
+
+        Returns:
+            True if DataFrame covers at least the requested range
+        """
+        if 'date' not in df.columns or len(df) == 0:
+            return False
+
+        # Convert dates to ISO format (handles both DD-MM-YYYY and YYYY-MM-DD)
+        start_iso = self.processor._convert_to_iso_date(start_date)
+        end_iso = self.processor._convert_to_iso_date(end_date)
+
+        # Parse to datetime
+        requested_start = pd.to_datetime(start_iso)
+        requested_end = pd.to_datetime(end_iso)
+
+        # Get actual range in DataFrame
+        df_start = df['date'].min()
+        df_end = df['date'].max()
+
+        # Superset match: DataFrame must cover AT LEAST the requested range
+        return df_start <= requested_start and df_end >= requested_end
+
+    def _filter_date_range(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        Filter DataFrame to exact requested date range.
+
+        Args:
+            df: DataFrame with 'date' column
+            start_date: Start date "DD-MM-YYYY" or "YYYY-MM-DD"
+            end_date: End date "DD-MM-YYYY" or "YYYY-MM-DD"
+
+        Returns:
+            Filtered DataFrame
+        """
+        # Convert dates to ISO format
+        start_iso = self.processor._convert_to_iso_date(start_date)
+        end_iso = self.processor._convert_to_iso_date(end_date)
+
+        # Parse to datetime
+        requested_start = pd.to_datetime(start_iso)
+        requested_end = pd.to_datetime(end_iso)
+
+        # Filter
+        mask = (df['date'] >= requested_start) & (df['date'] <= requested_end)
+        filtered = df[mask].copy()
+
+        print(f"[INFO] Filtered {len(df)} rows → {len(filtered)} rows (requested range)")
+
+        return filtered
+
+    def _archive_file(self, filepath: Path) -> None:
+        """
+        Move existing file to archived/ with timestamp prefix.
+
+        Example:
+          data/processed/binance_BTC_USDT_15m_processed.parquet
+          → data/archived/processed/20251213_1430_binance_BTC_USDT_15m_processed.parquet
+
+        Args:
+            filepath: Path to file to archive
+        """
+        if not filepath.exists():
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        archived_dir = self.storage_path / "archived" / filepath.parent.name
+        archived_path = archived_dir / f"{timestamp}_{filepath.name}"
+
+        shutil.move(str(filepath), str(archived_path))
+        print(f"[INFO] Archived: {filepath.name} → archived/{filepath.parent.name}/{archived_path.name}")
+
+    def _save_processed_data(self, df: pd.DataFrame, filepath: Path) -> None:
+        """
+        Save processed DataFrame with archiving.
+
+        Args:
+            df: DataFrame to save
+            filepath: Target file path
+        """
+        # Archive existing processed data before overwriting
+        if filepath.exists():
+            self._archive_file(filepath)
+
+        df.to_parquet(filepath, index=False)
+        print(f"[INFO] Saved processed data: {filepath}")
 
     def _get_data_gap(
         self,
@@ -376,7 +491,7 @@ class DataManager:
         Returns:
             DataFrame with OHLCV data for requested range
         """
-        filepath = self.storage_path / "raw" / self._get_storage_filename()
+        filepath = self.storage_path / "training_data" / "raw" / self._get_storage_filename()
 
         # Case 1: No existing data or force redownload
         if not filepath.exists() or force_redownload:
@@ -853,38 +968,106 @@ class DataManager:
         force_redownload: bool = False
     ) -> pd.DataFrame:
         """
-        Complete pipeline: download -> features -> strategies -> validate
+        Smart waterfall: processed cache → incremental update → raw fallback → save processed
+
+        Flow:
+        1. Try loading processed cache
+        2. If found: validate date range + incrementally update missing indicators/strategies
+        3. If not found or invalid: fallback to raw data + full processing
+        4. Save processed data for future use
 
         Args:
-            start_date: Start date "YYYY-MM-DD"
-            end_date: End date "YYYY-MM-DD"
+            start_date: Start date "DD-MM-YYYY" or "YYYY-MM-DD"
+            end_date: End date "DD-MM-YYYY" or "YYYY-MM-DD"
             strategy_list: List of strategy names (default: config.STRATEGY_LIST)
             force_redownload: If True, ignore existing data and redownload
 
         Returns:
             Fully processed DataFrame ready for array conversion
         """
-        # Phase 1: Download
+        updated = False  # Track if DataFrame was modified
+
+        # STEP A: Try loading from processed cache
+        if config.USE_PREPROCESSED_DATA and not force_redownload:
+            processed_path = self.storage_path / "training_data" / "processed" / self._get_processed_filename()
+
+            if processed_path.exists():
+                print(f"[INFO] Detected existing Processed Data at {processed_path}")
+                df = pd.read_parquet(processed_path)
+
+                # Validate date range (superset match)
+                if self._validate_date_range(df, start_date, end_date):
+                    print(f"[INFO] Date range validated. Checking features...")
+
+                    # 1. INDICATOR CHECK
+                    missing_indicators = [ind for ind in config.INDICATORS if ind not in df.columns]
+                    if missing_indicators:
+                        print(f"[INFO] Missing indicators: {missing_indicators}")
+                        print(f"[INFO] Calculating missing indicators...")
+                        df = self.processor.add_technical_indicator(df, missing_indicators)
+                        updated = True
+                    else:
+                        print(f"[INFO] All indicators present ({len(config.INDICATORS)} total)")
+
+                    # 2. STRATEGY CHECK (Smart Incremental Update)
+                    if config.ENABLE_STRATEGIES and strategy_list:
+                        existing_strategies = self._detect_existing_strategies(df)
+                        print(f"[INFO] Existing strategies: {existing_strategies}")
+
+                        # Use existing filter logic to determine what needs execution
+                        strategies_to_execute = self._filter_strategies_to_execute(
+                            df,
+                            strategy_list,
+                            existing_strategies,
+                            force=False
+                        )
+
+                        if strategies_to_execute:
+                            print(f"[INFO] Executing {len(strategies_to_execute)} missing/invalid strategy(s)...")
+                            df = self._execute_strategies_parallel(df, strategies_to_execute)
+                            updated = True
+                        else:
+                            print(f"[INFO] All strategies valid ({len(existing_strategies)} total)")
+
+                    # 3. AUTO-SAVE if updated
+                    if updated:
+                        print(f"[INFO] Features updated. Saving to {processed_path}...")
+                        self._save_processed_data(df, processed_path)
+
+                    # Filter to requested range and return
+                    print(f"[INFO] Loading cached processed data (fast path)")
+                    df = self._filter_date_range(df, start_date, end_date)
+                    return df  # IMMEDIATE RETURN
+                else:
+                    print(f"[WARNING] Date range insufficient. Falling back to raw data...")
+
+        # STEP B: Fallback to raw data + full processing
         print("\n=== Phase 1: Downloading data ===")
+        raw_path = self.storage_path / "training_data" / "raw" / self._get_storage_filename()
+        if raw_path.exists():
+            print(f"[INFO] Found existing Raw Data at {raw_path}. Checking for gaps...")
+
         df = self.get_or_download_data(start_date, end_date, force_redownload)
         print(f"Downloaded {len(df)} rows")
 
-        # Phase 2: Base features
         print("\n=== Phase 2: Adding technical indicators ===")
         df = self.add_base_features(df)
         print(f"Added {len(config.INDICATORS)} indicators")
 
-        # Phase 3: Strategy signals
         if config.ENABLE_STRATEGIES and strategy_list:
             print("\n=== Phase 3: Executing strategies ===")
             df = self.add_strategy_signals(df, strategy_list)
             n_strategies = len([col for col in df.columns if col.startswith('strategy_')]) // 4
             print(f"Added signals from {n_strategies} strategy(s)")
 
-        # Phase 4: Validate
         print("\n=== Phase 4: Validating and cleaning ===")
         df = self.validate_and_clean(df)
         print(f"Final shape: {df.shape}")
+
+        # STEP C: Save processed data for future use
+        if config.USE_PREPROCESSED_DATA:
+            processed_path = self.storage_path / "training_data" / "processed" / self._get_processed_filename()
+            self._save_processed_data(df, processed_path)
 
         return df
 

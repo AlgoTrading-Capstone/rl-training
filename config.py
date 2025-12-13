@@ -125,3 +125,23 @@ STRATEGY_LIST = [
 # None = use half of available CPU cores
 # Set to 1 to disable parallel processing (sequential mode)
 MAX_STRATEGY_WORKERS = None
+
+# ============================================================
+# Feature Store Configuration
+# ============================================================
+
+# Enable loading of preprocessed data (processed DataFrames with all indicators and strategies)
+# When True: system tries to load from training_data/processed/ before recalculating
+# When False: always recalculates all features from raw data
+USE_PREPROCESSED_DATA = True
+
+# Root directory for persistent data storage (shared across all training runs)
+# Structure:
+#   data/download_data/
+#   ├── training_data/          <-- PORTABLE (copy this to other machines)
+#   │   ├── raw/
+#   │   └── processed/
+#   └── archived/               <-- LOCAL HISTORY (stays on this machine)
+#       ├── raw/
+#       └── processed/
+DATA_ROOT_PATH = "data/download_data"
