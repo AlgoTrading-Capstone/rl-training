@@ -9,8 +9,7 @@ import ccxt
 import numpy as np
 import pandas as pd
 import talib
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 import config
 
 
@@ -442,37 +441,6 @@ class CcxtProcessor:
                 f"Check your internet connection and try again."
             )
 
-    def add_strategy_signals(
-            self,
-            df: pd.DataFrame,
-            strategy_list: list[str]
-    ) -> pd.DataFrame:
-        """
-        Add strategy signals (One-Hot encoded)
-        Controlled by config.ENABLE_STRATEGIES
-
-        Args:
-            df: DataFrame with OHLCV and technical indicators
-            strategy_list: List of strategy names to execute
-
-        Returns:
-            DataFrame with added strategy signal columns (4 per strategy)
-        """
-        if not config.ENABLE_STRATEGIES:
-            print("  Strategy signals disabled (config.ENABLE_STRATEGIES = False)")
-            return df
-
-        if not strategy_list:
-            print("  No strategies specified (config.STRATEGY_LIST is empty)")
-            return df
-
-        from data.strategy_processor import add_strategy_signals
-
-        print(f"\n  Generating strategy signals ({len(strategy_list)} strategies)...")
-        df = add_strategy_signals(df, strategy_list)
-
-        return df
-
     def df_to_array(
             self,
             df: pd.DataFrame,
@@ -586,14 +554,6 @@ class DataProcessor:
     def add_vix(self, df: pd.DataFrame) -> pd.DataFrame:
         """Add VIX proxy"""
         return self.processor.add_vix(df)
-
-    def add_strategy_signals(
-            self,
-            df: pd.DataFrame,
-            strategy_list: list[str]
-    ) -> pd.DataFrame:
-        """Add strategy signals (One-Hot encoded)"""
-        return self.processor.add_strategy_signals(df, strategy_list)
 
     def df_to_array(
             self,
