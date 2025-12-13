@@ -24,12 +24,11 @@ def main():
     # STEP 2: Initialize DataManager and process data
     # --------------------------------------------------------
     try:
-        # Initialize DataManager with integrated mode (results/{model}/data/)
+        # Initialize DataManager (uses shared data/ directory from config.DATA_ROOT_PATH)
         manager = DataManager(
             exchange=config.EXCHANGE_NAME,
             trading_pair=config.TRADING_PAIR,
-            base_timeframe=config.DATA_TIMEFRAME,
-            storage_path=f"{run_path}/data"
+            base_timeframe=config.DATA_TIMEFRAME
         )
 
         # Get processed arrays using smart incremental download
@@ -45,7 +44,7 @@ def main():
         print(f"ERROR: {e}")
         print(f"{'=' * 60}")
         print("\nTraining aborted due to data processing failure.")
-        print(f"Partial data may be available in: {run_path}/data/")
+        print(f"Partial data may be available in: {config.DATA_ROOT_PATH}")
         import traceback
         traceback.print_exc()
         return
