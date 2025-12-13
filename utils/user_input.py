@@ -74,10 +74,25 @@ def collect_user_input():
         end_dt = input_date("End date")
 
         # Validate chronological order
-        if start_dt < end_dt:
-            break
+        if start_dt >= end_dt:
+            print("Start date must be earlier than end date. Please try again.\n")
+            continue
 
-        print("Start date must be earlier than end date. Please try again.\n")
+        # Show parsed dates for confirmation
+        print(f"\n   Parsed dates:")
+        print(f"   Start: {start_dt.strftime('%B %d, %Y')} ({start_dt.strftime('%Y-%m-%d')})")
+        print(f"   End:   {end_dt.strftime('%B %d, %Y')} ({end_dt.strftime('%Y-%m-%d')})")
+
+        # Calculate duration
+        duration_days = (end_dt - start_dt).days
+        print(f"   Duration: {duration_days} days (~{duration_days/30:.1f} months)\n")
+
+        # Confirm with user
+        confirm = input("   Is this correct? (yes/no): ").strip().lower()
+        if confirm in ['yes', 'y']:
+            break
+        else:
+            print("\n   Let's try again...\n")
 
     # Format dates for metadata
     start_str = start_dt.strftime("%d-%m-%Y")

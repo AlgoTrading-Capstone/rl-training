@@ -14,7 +14,7 @@ def main():
     print("RL Training Execution")
     print("=" * 60)
 
-    # --------------------------------------------------------
+    # -------------------------------------------------------
     # STEP 1: Collect user input + create run folder + metadata
     # --------------------------------------------------------
     metadata, run_path = collect_user_input()
@@ -69,6 +69,8 @@ def main():
         print(f"ERROR: {e}")
         print(f"{'=' * 60}")
         print("\nTraining aborted due to environment initialization failure.")
+        import traceback
+        traceback.print_exc()
         return
 
     # --------------------------------------------------------

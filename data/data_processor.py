@@ -56,14 +56,18 @@ class CcxtProcessor:
         # Try to parse DD-MM-YYYY format first (user input format)
         try:
             dt = datetime.strptime(date_str, "%d-%m-%Y")
-            return dt.strftime("%Y-%m-%d")
+            iso_date = dt.strftime("%Y-%m-%d")
+            print(f"   [DATE DEBUG] Input: '{date_str}' (DD-MM-YYYY) → Parsed as: {iso_date} ({dt.strftime('%B %d, %Y')})")
+            return iso_date
         except ValueError:
             pass
 
         # Try YYYY-MM-DD format (already ISO)
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
-            return dt.strftime("%Y-%m-%d")
+            iso_date = dt.strftime("%Y-%m-%d")
+            print(f"   [DATE DEBUG] Input: '{date_str}' (YYYY-MM-DD) → Already ISO: {iso_date}")
+            return iso_date
         except ValueError:
             raise ValueError(
                 f"Invalid date format: '{date_str}'. "
