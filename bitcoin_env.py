@@ -89,6 +89,7 @@ class BitcoinTradingEnv:
             entry_price=None,
             stop_price=None,
         )
+        self.prev_equity = float(self.initial_balance)
         self.episode_return = 0.0  # Final episode profit ratio (total_asset / initial_balance)
 
         # ------------------------------------------------------------
@@ -136,6 +137,7 @@ class BitcoinTradingEnv:
             entry_price=None,
             stop_price=None,
         )
+        self.prev_equity = float(self.initial_balance)
         self.episode_return = 0.0
 
         # Load first timestep features
@@ -192,11 +194,7 @@ class BitcoinTradingEnv:
         # -------------------------------
         # Compute old equity (for reward)
         # -------------------------------
-        old_equity = compute_equity(
-            balance=self.position.balance,
-            holdings=self.position.holdings,
-            price=exec_price,
-        )
+        old_equity = self.prev_equity
 
         # -------------------------------
         # STOP-LOSS CHECK (intra-candle)
@@ -252,6 +250,11 @@ class BitcoinTradingEnv:
         )
 
         reward = self.reward_fn(old_equity, new_equity)
+
+        # -------------------------------
+        # Update equity for next step
+        # -------------------------------
+        self.prev_equity = new_equity
 
         # -------------------------------
         # Determine episode termination

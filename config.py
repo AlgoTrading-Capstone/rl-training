@@ -117,11 +117,8 @@ ENABLE_TURBULENCE = True
 ENABLE_VIX = True
 VIX_SYMBOL = "^VIX"
 
-# Execution slippage applied to market orders (fractional impact on price)
-# SLIPPAGE_MEAN: average slippage as a fraction of price (e.g. 0.0001 = 0.01%)
-# SLIPPAGE_STD:  standard deviation of slippage noise (e.g. 0.00005 = ±0.005%)
+# Average slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
 SLIPPAGE_MEAN = 0.0001
-SLIPPAGE_STD = 0.00005
 
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"

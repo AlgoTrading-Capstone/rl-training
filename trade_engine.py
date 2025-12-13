@@ -11,7 +11,7 @@ This module encapsulates all trading logic:
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
-from config import SLIPPAGE_MEAN, SLIPPAGE_STD
+from config import SLIPPAGE_MEAN
 
 import numpy as np
 
@@ -153,7 +153,9 @@ def apply_trade(balance: float,
         return balance, holdings, 0.0
 
     # Simulate slippage
-    slippage = np.random.normal(loc=SLIPPAGE_MEAN, scale=SLIPPAGE_STD)
+    direction = 1 if delta_btc > 0 else -1
+    slippage = direction * SLIPPAGE_MEAN
+
     exec_price = price * (1 + slippage)
 
     # Proposed trade notional (USD)
