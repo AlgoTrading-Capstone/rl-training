@@ -24,7 +24,7 @@ PPO_CONFIG = {
     "ratio_clip": 0.2,         # PPO clip threshold (stability)
     "lambda_gae_adv": 0.95,    # GAE lambda (bias/variance tradeoff)
     "lambda_entropy": 0.01,    # Exploration encouragement
-    "if_use_v_trace": True,    # Use V-trace off-policy correction
+    "if_use_vtrace": True,     # Use V-trace off-policy correction
 }
 
 SAC_CONFIG = {
@@ -33,18 +33,6 @@ SAC_CONFIG = {
     "soft_update_tau": 0.005,  # Target network Polyak factor
     "alpha": None,             # None = automatic entropy tuning
 }
-
-
-def _make_env_args(env) -> dict:
-    """Build env_args dict in the exact shape ElegantRL expects."""
-    return {
-        "env_name": getattr(env, "env_name", "env"),
-        "num_envs": getattr(env, "num_envs", 1),
-        "max_step": getattr(env, "max_step", 12345),
-        "state_dim": getattr(env, "state_dim", None),
-        "action_dim": getattr(env, "action_dim", None),
-        "if_discrete": getattr(env, "if_discrete", False),
-    }
 
 
 def _validate_net_dims(state_dim: int, net_dims: list[int]) -> None:
