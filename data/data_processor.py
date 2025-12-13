@@ -43,6 +43,34 @@ class CcxtProcessor:
 
         print(f"{self.exchange_name.capitalize()} exchange initialized")
 
+    def _convert_to_iso_date(self, date_str: str) -> str:
+        """
+        Convert date string to ISO 8601 format (YYYY-MM-DD)
+        Handles both DD-MM-YYYY and YYYY-MM-DD formats
+
+        Args:
+            date_str: Date string in DD-MM-YYYY or YYYY-MM-DD format
+
+        Returns:
+            Date string in YYYY-MM-DD format
+        """
+        # Try to parse DD-MM-YYYY format first (user input format)
+        try:
+            dt = datetime.strptime(date_str, "%d-%m-%Y")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+        # Try YYYY-MM-DD format (already ISO)
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            raise ValueError(
+                f"Invalid date format: '{date_str}'. "
+                f"Expected DD-MM-YYYY or YYYY-MM-DD"
+            )
+
     def download_data(
             self,
             ticker_list: list[str],
@@ -55,8 +83,8 @@ class CcxtProcessor:
 
         Args:
             ticker_list: List of trading symbols (e.g., ['BTC/USDT'])
-            start_date: Start date in 'YYYY-MM-DD' format
-            end_date: End date in 'YYYY-MM-DD' format
+            start_date: Start date in 'DD-MM-YYYY' or 'YYYY-MM-DD' format
+            end_date: End date in 'DD-MM-YYYY' or 'YYYY-MM-DD' format
             time_interval: Candle timeframe (e.g., '15m', '1h', '1d')
 
         Returns:
@@ -70,8 +98,12 @@ class CcxtProcessor:
             print(f"   Period: {start_date} to {end_date}")
 
             # Convert dates to timestamps
-            since = self.exchange.parse8601(f"{start_date}T00:00:00Z")
-            until = self.exchange.parse8601(f"{end_date}T23:59:59Z")
+            # Handle both DD-MM-YYYY and YYYY-MM-DD formats
+            start_iso = self._convert_to_iso_date(start_date)
+            end_iso = self._convert_to_iso_date(end_date)
+
+            since = self.exchange.parse8601(f"{start_iso}T00:00:00Z")
+            until = self.exchange.parse8601(f"{end_iso}T23:59:59Z")
 
             # Fetch data in chunks
             candles = self._fetch_ohlcv_chunks(symbol, time_interval, since, until)
