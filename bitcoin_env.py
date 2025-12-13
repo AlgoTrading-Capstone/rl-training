@@ -21,6 +21,7 @@ from trade_engine import (
     PositionState,
     apply_action,
     compute_equity,
+    close_position,
 )
 
 
@@ -113,7 +114,7 @@ class BitcoinTradingEnv:
 
         # Action space: action = [a_pos, a_sl]
         # a_pos ∈ [-1, +1] - desired exposure: -1 = max short, 0 = flat, +1 = max long
-        # a_sl ∈ [0, 1] - stop-loss tightness within a predefined range
+        # a_sl ∈ [-1, 1] - stop-loss tightness within a predefined range
         # The trade engine converts these targets into actual market buy/sell actions.
         self.action_dim = 2
 
@@ -175,7 +176,7 @@ class BitcoinTradingEnv:
         action : array_like
             Continuous action [a_pos, a_sl]:
                 a_pos ∈ [-1, +1] - desired exposure
-                a_sl  ∈ [0, 1] - stop-loss tightness
+                a_sl  ∈ [-1, 1] - stop-loss tightness
 
         Returns
         -------
@@ -196,6 +197,7 @@ class BitcoinTradingEnv:
         # -------------------------------
         open_p, high_p, low_p, close_p = self.current_price[:4]
         exec_price = float(close_p)
+        equity_price = exec_price
 
         # -------------------------------
         # Compute old equity (for reward)
@@ -210,28 +212,30 @@ class BitcoinTradingEnv:
         # STOP-LOSS CHECK BEFORE ACTION
         # -------------------------------
         stop_triggered = False
+        stop_exec_price = None
 
         if self.position.stop_price is not None and not np.isclose(self.position.holdings, 0.0):
 
             if self.position.holdings > 0:
-                # LONG: stop triggered if low <= stop_price
+                # LONG stop
                 if low_p <= self.position.stop_price:
                     stop_triggered = True
+                    stop_exec_price = self.position.stop_price
 
             elif self.position.holdings < 0:
-                # SHORT: stop triggered if high >= stop_price
+                # SHORT stop
                 if high_p >= self.position.stop_price:
                     stop_triggered = True
+                    stop_exec_price = self.position.stop_price
 
         # If stop-loss triggers - force close and skip agent action
         if stop_triggered:
-            result = apply_action(
-                a_pos=0.0,  # force close
-                a_sl=a_sl,
-                price=exec_price,
+            result = close_position(
+                price=stop_exec_price,
                 state=self.position,
                 cfg=self.trade_cfg,
             )
+            equity_price = stop_exec_price
         else:
             result = apply_action(
                 a_pos=a_pos,
@@ -249,7 +253,7 @@ class BitcoinTradingEnv:
         new_equity = compute_equity(
             balance=self.position.balance,
             holdings=self.position.holdings,
-            price=exec_price,
+            price=equity_price,
         )
 
         reward = self.reward_fn(old_equity, new_equity)

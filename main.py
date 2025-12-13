@@ -5,7 +5,6 @@ import config
 from data.data_manager import DataManager
 from utils.user_input import collect_user_input
 from bitcoin_env import BitcoinTradingEnv
-from adapters.elegantrl_bitcoin_env import ElegantRLBitcoinEnv
 from rl_configs import build_elegantrl_config
 from elegantrl.train.run import train_agent
 
@@ -53,27 +52,17 @@ def main():
     # STEP 3: Initialize RL environments for training and evaluation
     # --------------------------------------------------------
     try:
-        # Domain train environment (pure)
-        train_bitcoin_env = BitcoinTradingEnv(
-            price_array,
-            tech_array,
-            turbulence_array,
-            signal_array,
-            mode="train",
-        )
-        # ElegantRL-compatible train environment
-        train_rl_env = ElegantRLBitcoinEnv(train_bitcoin_env)
+        probe_train = BitcoinTradingEnv(price_array, tech_array, turbulence_array, signal_array, mode="train")
+        probe_test = BitcoinTradingEnv(price_array, tech_array, turbulence_array, signal_array, mode="test")
 
-        # Domain eval environment (pure)
-        eval_bitcoin_env = BitcoinTradingEnv(
-            price_array,
-            tech_array,
-            turbulence_array,
-            signal_array,
-            mode="test",
-        )
-        # ElegantRL-compatible eval environment
-        eval_rl_env = ElegantRLBitcoinEnv(eval_bitcoin_env)
+        state_dim = probe_train.state_dim
+        action_dim = probe_train.action_dim
+
+        train_max_step = probe_train.max_step
+        eval_max_step = probe_test.max_step
+
+        del probe_train
+        del probe_test
 
     except Exception as e:
         print(f"\n{'=' * 60}")
@@ -87,8 +76,14 @@ def main():
     # --------------------------------------------------------
     try:
         erl_config = build_elegantrl_config(
-            train_env=train_rl_env,
-            eval_env=eval_rl_env,
+            price_array=price_array,
+            tech_array=tech_array,
+            turbulence_array=turbulence_array,
+            signal_array=signal_array,
+            state_dim=state_dim,
+            action_dim=action_dim,
+            train_max_step=train_max_step,
+            eval_max_step=eval_max_step,
             run_path=run_path,
         )
 

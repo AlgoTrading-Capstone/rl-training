@@ -5,6 +5,7 @@ ElegantRL configuration builder.
 import os
 from elegantrl.train.config import Config
 from elegantrl.agents import AgentPPO, AgentSAC
+from adapters.elegantrl_bitcoin_env import ElegantRLBitcoinEnv
 
 from config import (
     RL_MODEL,
@@ -65,22 +66,18 @@ def _validate_net_dims(state_dim: int, net_dims: list[int]) -> None:
         )
 
 
-def build_elegantrl_config(train_env, eval_env, run_path: str) -> Config:
-    """
-    Build ElegantRL Config object from domain environment + user config.
-
-    Parameters
-    ----------
-    train_env : ElegantRL-compatible env
-    eval_env  : ElegantRL-compatible env
-    run_path  : str
-        Existing run folder path (contains metadata/data).
-
-    Returns
-    -------
-    Config
-        Fully initialized ElegantRL training config.
-    """
+def build_elegantrl_config(
+    *,
+    price_array,
+    tech_array,
+    turbulence_array,
+    signal_array,
+    state_dim: int,
+    action_dim: int,
+    train_max_step: int,
+    eval_max_step: int,
+    run_path: str,
+) -> Config:
     if RL_MODEL not in SUPPORTED_RL_MODELS:
         raise ValueError(f"Unsupported RL_MODEL='{RL_MODEL}'. Supported: {SUPPORTED_RL_MODELS}")
 
@@ -91,15 +88,31 @@ def build_elegantrl_config(train_env, eval_env, run_path: str) -> Config:
         agent_class = AgentSAC
         algo_cfg = SAC_CONFIG
 
-    train_env_args = _make_env_args(train_env)
-    eval_env_args = _make_env_args(eval_env)
+    train_env_args = {
+        "env_name": "BitcoinTradingEnv",
+        "num_envs": 1,
+        "max_step": int(train_max_step),
+        "state_dim": int(state_dim),
+        "action_dim": int(action_dim),
+        "if_discrete": False,
+
+        "price_array": price_array,
+        "tech_array": tech_array,
+        "turbulence_array": turbulence_array,
+        "signal_array": signal_array,
+        "mode": "train",
+    }
+
+    eval_env_args = dict(train_env_args)
+    eval_env_args["max_step"] = int(eval_max_step)
+    eval_env_args["mode"] = "test"
 
     # Enforce NET_DIMS[0] >= state_dim
     _validate_net_dims(train_env_args["state_dim"], NET_DIMS)
 
     erl_config = Config(
         agent_class=agent_class,
-        env_class=lambda **_: train_env,
+        env_class=ElegantRLBitcoinEnv,
         env_args=train_env_args,
     )
 
@@ -125,7 +138,7 @@ def build_elegantrl_config(train_env, eval_env, run_path: str) -> Config:
         setattr(erl_config, key, value)
 
     # Evaluation
-    erl_config.eval_env_class = lambda **_: eval_env
+    erl_config.eval_env_class = ElegantRLBitcoinEnv
     erl_config.eval_env_args = eval_env_args
     erl_config.eval_per_step = int(2e4)
     erl_config.eval_times = 8

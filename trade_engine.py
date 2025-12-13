@@ -181,12 +181,13 @@ def compute_stop_price(side: int,
     Compute a stop-loss price based on:
     - position side (+1 for long, -1 for short)
     - entry price
-    - a_sl ∈ [0, 1] controlling how tight/loose the stop is
+    - a_sl ∈ [-1, 1] controlling how tight/loose the stop is
     """
-    # Safety clamp on a_sl
-    a_sl = float(np.clip(a_sl, 0.0, 1.0))
+    # a_sl arrives from PPO/SAC in [-1, 1]. Map to [0, 1].
+    a_sl = float(np.clip(a_sl, -1.0, 1.0))
+    a_sl01 = 0.5 * (a_sl + 1.0)  # [-1,1] -> [0,1]
 
-    stop_pct = cfg.min_stop_pct + a_sl * (cfg.max_stop_pct - cfg.min_stop_pct)
+    stop_pct = cfg.min_stop_pct + a_sl01 * (cfg.max_stop_pct - cfg.min_stop_pct)
 
     if side > 0:
         # Long position: stop below entry
@@ -335,4 +336,37 @@ def apply_action(a_pos: float,
         new_state=new_state,
         effective_delta_btc=effective_delta_btc,
         trade_executed=trade_executed,
+    )
+
+
+def close_position(price: float, state: PositionState, cfg: TradeConfig) -> TradeResult:
+    """
+    Force close the entire position at given price (with slippage+fee via apply_trade).
+    Bypasses deadzone / leverage logic intentionally.
+    """
+    if np.isclose(state.holdings, 0.0) or price <= 0.0:
+        new_state = PositionState(balance=state.balance, holdings=state.holdings,
+                                  entry_price=None if np.isclose(state.holdings, 0.0) else state.entry_price,
+                                  stop_price=None if np.isclose(state.holdings, 0.0) else state.stop_price)
+        return TradeResult(new_state=new_state, effective_delta_btc=0.0, trade_executed=False)
+
+    delta_btc = -state.holdings  # close all
+    new_balance, new_holdings, effective_delta_btc = apply_trade(
+        balance=state.balance,
+        holdings=state.holdings,
+        price=price,
+        delta_btc=delta_btc,
+        cfg=cfg,
+    )
+
+    new_state = PositionState(
+        balance=new_balance,
+        holdings=new_holdings,
+        entry_price=None,
+        stop_price=None,
+    )
+    return TradeResult(
+        new_state=new_state,
+        effective_delta_btc=effective_delta_btc,
+        trade_executed=not np.isclose(effective_delta_btc, 0.0),
     )

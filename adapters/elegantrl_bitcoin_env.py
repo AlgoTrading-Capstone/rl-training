@@ -1,32 +1,48 @@
 import numpy as np
+from bitcoin_env import BitcoinTradingEnv
 
 
 class ElegantRLBitcoinEnv:
     """
     Adapter between BitcoinTradingEnv (domain environment)
     and ElegantRL-compatible environment API.
-
-    Responsibilities:
-    - Translate reset/step signatures
-    - Provide metadata expected by ElegantRL
-    - Handle tensor/np conversions
-    - Separate 'terminated' vs 'truncated'
     """
-
-    def __init__(self, bitcoin_env, env_name="BitcoinTradingEnv",
-                 num_envs=1, max_step=None, state_dim=None, action_dim=None,
-                 if_discrete=False, **_):
+    def __init__(
+        self,
+        bitcoin_env=None,
+        *,
+        price_array=None,
+        tech_array=None,
+        turbulence_array=None,
+        signal_array=None,
+        mode="train",
+        env_name="BitcoinTradingEnv",
+        num_envs=1,
+        max_step=None,
+        state_dim=None,
+        action_dim=None,
+        if_discrete=False,
+        **_,
+    ):
         """
-        Initialize an ElegantRL-compatible wrapper around the domain environment.
+        Initialize an ElegantRL-compatible environment.
 
         Notes
         -----
-        - This adapter keeps BitcoinTradingEnv unchanged and only translates its API
-          to what ElegantRL expects (reset/step signatures + required attributes).
-        - `**_` allows ElegantRL to pass extra kwargs without breaking the wrapper.
+        - Return types for reset/step are numpy-based to match ElegantRL expectations.
+        - If `bitcoin_env` is not provided, the adapter builds BitcoinTradingEnv from arrays.
+        - `**_` allows ElegantRL to pass extra kwargs without breaking this adapter.
         """
-        self.env = bitcoin_env
+        if bitcoin_env is None:
+            bitcoin_env = BitcoinTradingEnv(
+                price_array,
+                tech_array,
+                turbulence_array,
+                signal_array,
+                mode=mode,
+            )
 
+        self.env = bitcoin_env
         self.env_name = env_name
         self.num_envs = num_envs
         self.if_discrete = if_discrete
@@ -60,7 +76,7 @@ class ElegantRLBitcoinEnv:
         Domain env returns:
             next_state, reward, done, info
         """
-        action = self._to_numpy(action)
+        action = self._to_numpy(action).astype(np.float32, copy=False)
 
         next_state, reward, done, info = self.env.step(action)
 
@@ -89,7 +105,7 @@ class ElegantRLBitcoinEnv:
     @staticmethod
     def _to_numpy(x):
         """
-        Convert numpy, lists, and torch tensors to numpy arrays.
+        Convert torch.Tensor (CPU/GPU) to numpy, otherwise np.asarray.
         """
         if hasattr(x, "detach"):
             return x.detach().cpu().numpy()
