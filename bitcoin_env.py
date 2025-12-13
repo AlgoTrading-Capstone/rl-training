@@ -210,13 +210,15 @@ class BitcoinTradingEnv:
                 # LONG stop
                 if low_p <= self.position.stop_price:
                     stop_triggered = True
-                    stop_exec_price = self.position.stop_price
+                    # Execute at the worse of open or stop price - handles gap downs
+                    stop_exec_price = min(open_p, self.position.stop_price)
 
             elif self.position.holdings < 0:
                 # SHORT stop
                 if high_p >= self.position.stop_price:
                     stop_triggered = True
-                    stop_exec_price = self.position.stop_price
+                    # Execute at the worse of open or stop price - handles gap ups
+                    stop_exec_price = max(open_p, self.position.stop_price)
 
         # -------------------------------
         # Apply trading logic
@@ -254,7 +256,8 @@ class BitcoinTradingEnv:
         # -------------------------------
         # Determine episode termination
         # -------------------------------
-        done = (self.day == self.max_step - 1)
+        is_bankrupt = (new_equity <= 0)  # Agent has lost all equity
+        done = (self.day == self.max_step - 1) or is_bankrupt
 
         # -------------------------------
         # Advance time if not done

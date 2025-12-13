@@ -49,26 +49,33 @@ def main():
         return
 
     # --------------------------------------------------------
-    # STEP 3: Initialize RL environments for training and evaluation
+    # STEP 3: Calculate Dimensions
     # --------------------------------------------------------
     try:
-        probe_train = BitcoinTradingEnv(price_array, tech_array, turbulence_array, signal_array, mode="train")
-        probe_test = BitcoinTradingEnv(price_array, tech_array, turbulence_array, signal_array, mode="test")
+        price_dim = price_array.shape[1]
+        tech_dim = tech_array.shape[1]
+        turb_dim = turbulence_array.shape[1]
+        sig_dim = signal_array.shape[1]
 
-        state_dim = probe_train.state_dim
-        action_dim = probe_train.action_dim
+        # State includes: balance, price features, indicators, turbulence, strategy signals, position size
+        state_dim = 1 + price_dim + tech_dim + turb_dim + sig_dim + 1
 
-        train_max_step = probe_train.max_step
-        eval_max_step = probe_test.max_step
+        # Action space: [a_pos, a_sl]
+        action_dim = 2
 
-        del probe_train
-        del probe_test
+        # Calculate Max Steps (Train/Test Split)
+        total_data_points = price_array.shape[0]
+        split_idx = int(total_data_points * config.TRAIN_TEST_SPLIT)
+
+        # Train gets the first chunk, Test gets the remainder
+        train_max_step = split_idx
+        eval_max_step = total_data_points - split_idx
 
     except Exception as e:
         print(f"\n{'=' * 60}")
         print(f"ERROR: {e}")
         print(f"{'=' * 60}")
-        print("\nTraining aborted due to environment initialization failure.")
+        print("\nTraining aborted during dimension calculation.")
         import traceback
         traceback.print_exc()
         return
