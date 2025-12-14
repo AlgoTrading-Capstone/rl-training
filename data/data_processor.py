@@ -464,20 +464,24 @@ class CcxtProcessor:
         """
         print("\n Converting to numpy arrays...")
 
-        # Price array: [open, high, low, close]
-        price_array = df[['open', 'high', 'low', 'close']].values
+        # Price array: [open, high, low, close, volume]
+        price_array = df[['open', 'high', 'low', 'close', 'volume']].values
 
-        # Technical indicators array
-        tech_cols = tech_indicator_list.copy()
+        # Technical indicators array (VIX belongs in turbulence_array, not here)
+        tech_array = df[tech_indicator_list].values if tech_indicator_list else np.array([])
+
+        # Turbulence array: [turbulence, vix] (both optional based on config)
+        turb_cols = []
+        if 'turbulence' in df.columns:
+            turb_cols.append('turbulence')
         if if_vix and 'vix' in df.columns:
-            tech_cols.append('vix')
+            turb_cols.append('vix')
 
-        tech_array = df[tech_cols].values if tech_cols else np.array([])
-
-        # Turbulence array
-        turbulence_array = (
-            df['turbulence'].values if 'turbulence' in df.columns else np.array([])
-        )
+        # Create 2D array with shape (T, N) where N = number of enabled features
+        if turb_cols:
+            turbulence_array = df[turb_cols].values
+        else:
+            turbulence_array = np.zeros((len(df), 0), dtype=np.float32)
 
         # Strategy signal array (One-Hot encoded)
         # Columns follow pattern: strategy_{name}_flat, strategy_{name}_long, etc.
@@ -494,11 +498,7 @@ class CcxtProcessor:
         tech_array = np.nan_to_num(tech_array, nan=0.0, posinf=0.0, neginf=0.0)
         turbulence_array = np.nan_to_num(turbulence_array, nan=0.0, posinf=0.0, neginf=0.0)
 
-        print(f"   Arrays created:")
-        print(f"   Price array shape: {price_array.shape}")
-        print(f"   Tech array shape: {tech_array.shape}")
-        print(f"   Turbulence array shape: {turbulence_array.shape}")
-        print(f"   Signal array shape: {signal_array.shape}")
+        # Shapes printed in data_manager.py (removed duplicate)
 
         return price_array, tech_array, turbulence_array, signal_array
 

@@ -1092,9 +1092,10 @@ class DataManager:
 
         print("\n=== Phase 5: Converting to arrays ===")
         arrays = self.to_arrays(df)
-        print(f"  Price array shape: {arrays[0].shape}")
-        print(f"  Tech array shape: {arrays[1].shape}")
-        print(f"  Turbulence array shape: {arrays[2].shape}")
-        print(f"  Signal array shape: {arrays[3].shape}")
+        price_array, tech_array, turbulence_array, signal_array = arrays
+        print(f"  Price array shape: {price_array.shape} (OHLCV)")
+        print(f"  Tech array shape: {tech_array.shape} (indicators only)")
+        print(f"  Turbulence array shape: {turbulence_array.shape} (turbulence + VIX)")
+        print(f"  Signal array shape: {signal_array.shape} (strategy signals)")
 
         return arrays
