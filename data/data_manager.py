@@ -938,7 +938,7 @@ class DataManager:
     def to_arrays(
         self,
         df: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Convert DataFrame to numpy arrays for RL environment.
 
@@ -948,13 +948,17 @@ class DataManager:
             df: Fully processed DataFrame
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array, signal_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
         """
-        return self.processor.df_to_array(
+        price_array, tech_array, turbulence_array, signal_array = self.processor.df_to_array(
             df=df,
             tech_indicator_list=config.INDICATORS,
             if_vix=config.ENABLE_VIX
         )
+
+        datetime_array = df["date"].to_numpy()
+
+        return price_array, tech_array, turbulence_array, signal_array, datetime_array
 
     # ========================================================================
     # High-Level API (Main Entry Points)
@@ -1071,12 +1075,12 @@ class DataManager:
 
         return df
 
-    def get_arrays_for_training(
+    def get_arrays(
         self,
         start_date: str,
         end_date: str,
         strategy_list: List[str] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Complete pipeline: download -> features -> strategies -> arrays
 
@@ -1086,16 +1090,17 @@ class DataManager:
             strategy_list: List of strategy names (default: config.STRATEGY_LIST)
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array, signal_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
         """
         df = self.get_processed_data(start_date, end_date, strategy_list)
 
         print("\n=== Phase 5: Converting to arrays ===")
         arrays = self.to_arrays(df)
-        price_array, tech_array, turbulence_array, signal_array = arrays
+        price_array, tech_array, turbulence_array, signal_array, datetime_array = arrays
         print(f"  Price array shape: {price_array.shape} (OHLCV)")
         print(f"  Tech array shape: {tech_array.shape} (indicators only)")
         print(f"  Turbulence array shape: {turbulence_array.shape} (turbulence + VIX)")
         print(f"  Signal array shape: {signal_array.shape} (strategy signals)")
+        print(f"  Datetime array shape: {datetime_array.shape} (date-time info)")
 
         return arrays

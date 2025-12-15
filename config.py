@@ -127,9 +127,6 @@ TRAINING_MACHINE_NAME = "OmerPC"
 # Data will be stored per-run in: results/{model_name}_{machine_name}/data/
 RESULTS_PATH = "results"
 
-# Folder for all log files
-LOG_PATH = "logs"
-
 # ============================================================
 # Strategy Integration Configuration
 # ============================================================

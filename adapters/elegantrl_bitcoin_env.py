@@ -15,6 +15,7 @@ class ElegantRLBitcoinEnv:
         tech_array=None,
         turbulence_array=None,
         signal_array=None,
+        datetime_array=None,
         mode="train",
         env_name="BitcoinTradingEnv",
         num_envs=1,
@@ -39,6 +40,7 @@ class ElegantRLBitcoinEnv:
                 tech_array,
                 turbulence_array,
                 signal_array,
+                datetime_array,
                 mode=mode,
             )
 

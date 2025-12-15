@@ -12,6 +12,7 @@ from utils.user_input import (
 )
 from rl_configs import build_elegantrl_config
 from elegantrl.train.run import train_agent
+from pathlib import Path
 
 
 def run_training_pipeline(metadata, run_path, manager):
@@ -31,7 +32,7 @@ def run_training_pipeline(metadata, run_path, manager):
         train_end = metadata["training"]["end_date"]
 
         # Fetch arrays for training
-        price_array, tech_array, turbulence_array, signal_array = manager.get_arrays_for_training(
+        price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
             start_date=train_start,
             end_date=train_end,
             strategy_list=strategy_list,
@@ -88,6 +89,7 @@ def run_training_pipeline(metadata, run_path, manager):
             tech_array=tech_array,
             turbulence_array=turbulence_array,
             signal_array=signal_array,
+            datetime_array=datetime_array,
             state_dim=state_dim,
             action_dim=action_dim,
             train_max_step=train_max_step,
@@ -135,7 +137,22 @@ def run_backtest_pipeline(metadata, run_path, manager):
     """
 
     # --------------------------------------------------------
-    # STEP 6: Load and clean backtest data
+    # STEP 6: Validate trained actor checkpoint exists
+    # --------------------------------------------------------
+    model_run_path = Path(metadata.get("model_run_path", run_path))
+    act_path = model_run_path / "elegantrl" / "act.pth"
+
+    if not act_path.is_file():
+        raise FileNotFoundError(
+            f"Missing ElegantRL actor checkpoint: {act_path}\n"
+            f"Run mode: {metadata.get('mode')}\n"
+            f"Tip: Train first, or verify the ElegantRL output folder and checkpoint name."
+        )
+
+    print(f"[INFO] Using actor checkpoint: {act_path}")
+
+    # --------------------------------------------------------
+    # STEP 7: Load and clean backtest data
     # --------------------------------------------------------
     try:
         strategy_list = config.STRATEGY_LIST if config.ENABLE_STRATEGIES else []
@@ -143,8 +160,7 @@ def run_backtest_pipeline(metadata, run_path, manager):
         bt_start = metadata["backtest"]["start_date"]
         bt_end = metadata["backtest"]["end_date"]
 
-        # TODO: Matan: consider get_arrays name change
-        price_array, tech_array, turbulence_array, signal_array = manager.get_arrays_for_training(
+        price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
             start_date=bt_start,
             end_date=bt_end,
             strategy_list=strategy_list,

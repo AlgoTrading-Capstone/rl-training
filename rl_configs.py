@@ -60,6 +60,7 @@ def build_elegantrl_config(
     tech_array,
     turbulence_array,
     signal_array,
+    datetime_array,
     state_dim: int,
     action_dim: int,
     train_max_step: int,
@@ -96,6 +97,7 @@ def build_elegantrl_config(
         "tech_array": tech_array,
         "turbulence_array": turbulence_array,
         "signal_array": signal_array,
+        "datetime_array": datetime_array,
         "mode": "train",
     }
 

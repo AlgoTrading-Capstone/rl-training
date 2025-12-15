@@ -461,6 +461,11 @@ class CcxtProcessor:
 
         Returns:
             Tuple of (price_array, tech_array, turbulence_array, signal_array)
+
+        Notes:
+            Datetime information is NOT returned here.
+            It is handled at DataManager level as a separate datetime_array
+            for logging and backtesting purposes.
         """
         print("\n Converting to numpy arrays...")
 

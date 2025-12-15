@@ -26,23 +26,38 @@ from trade_engine import (
 
 class BitcoinTradingEnv:
 
-    def __init__(self, price_ary, tech_ary, turbulence_array, signal_ary, mode="train"):
+    def __init__(self, price_ary, tech_ary, turbulence_array, signal_ary, datetime_ary, mode="train"):
         """
         RL Trading Environment for Bitcoin.
         price_ary:        np.ndarray - price features
         tech_ary:         np.ndarray - technical indicators
         turbulence_array: np.ndarray - turbulence & VIX
         signal_ary:       np.ndarray - strategy outputs
-        mode:             "train" | "test"
+        datetime_ary:     np.ndarray - datetime for backtesting
+        mode:             "train" | "test" | "backtest"
         """
 
-        assert mode in ["train", "test"], "mode must be 'train' or 'test'."
+        assert mode in ["train", "test", "backtest"], "mode must be 'train', 'test', or 'backtest'."
         self.mode = mode
 
-        # Handle empty signal array (backward compatibility)
+        # ------------------------------------------------------------
+        # Basic sanity checks on input arrays
+        # ------------------------------------------------------------
+        num_candles = price_ary.shape[0]
+
+        # Ensure all arrays have the same length (number of candles)
+        if any(arr.shape[0] != num_candles for arr in (tech_ary, turbulence_array, signal_ary, datetime_ary)):
+            raise ValueError("All input arrays must have the same length.")
+
+        # Ensure all arrays are 2D
+        if signal_ary.ndim != 2:
+            raise ValueError("signal_ary must be 2D (shape: [T, signal_dim]).")
+        if price_ary.ndim != 2 or tech_ary.ndim != 2 or turbulence_array.ndim != 2:
+            raise ValueError("price_ary / tech_ary / turbulence_array must be 2D (shape: [T, dim]).")
+
+        # Warn if no strategy signals are provided
         if signal_ary.shape[1] == 0:
-            print("Warning: No strategy signals (ENABLE_STRATEGIES=False or empty STRATEGY_LIST)")
-            print("   Environment will run without strategy features in state space")
+            print("Warning: No strategy signals (ENABLE_STRATEGIES=False or empty STRATEGY_LIST). Environment will run without strategy features in state space.")
 
         # ------------------------------------------------------------
         # Load configuration values
@@ -65,24 +80,25 @@ class BitcoinTradingEnv:
         # ------------------------------------------------------------
         # Prepare historical data (splitting train/test)
         # ------------------------------------------------------------
-        num_candles = price_ary.shape[0]
         split_idx = int(num_candles * TRAIN_TEST_SPLIT)
 
         if mode == "train":
-            self.price_ary = price_ary[:split_idx]
-            self.tech_ary = tech_ary[:split_idx]
-            self.turbulence_ary = turbulence_array[:split_idx]
-            self.signal_ary = signal_ary[:split_idx]
-        else:  # test mode
-            self.price_ary = price_ary[split_idx:]
-            self.tech_ary = tech_ary[split_idx:]
-            self.turbulence_ary = turbulence_array[split_idx:]
-            self.signal_ary = signal_ary[split_idx:]
+            sl = slice(0, split_idx)
+        elif mode == "test":
+            sl = slice(split_idx, num_candles)
+        else:  # backtest
+            sl = slice(0, num_candles)
+
+        self.price_ary = price_ary[sl]
+        self.tech_ary = tech_ary[sl]
+        self.turbulence_ary = turbulence_array[sl]
+        self.signal_ary = signal_ary[sl]
+        self.datetime_ary = datetime_ary[sl]
 
         # ------------------------------------------------------------
         # RL Environment internal state
         # ------------------------------------------------------------
-        self.day = 0
+        self.step_idx = 0
         self.position = PositionState(
             balance=float(self.initial_balance),
             holdings=0.0,
@@ -114,11 +130,12 @@ class BitcoinTradingEnv:
         # When the agent reaches (max_step - 1), the episode ends (done=True).
         self.max_step = self.price_ary.shape[0]
 
-        # Load first observation (day = 0)
+        # Load first observation (step_idx = 0)
         self.current_price = self.price_ary[0]
         self.current_tech = self.tech_ary[0]
         self.current_turbulence = self.turbulence_ary[0]
         self.current_signal = self.signal_ary[0]
+        self.current_datetime = self.datetime_ary[0]
 
 
     def reset(self):
@@ -128,7 +145,7 @@ class BitcoinTradingEnv:
         """
 
         # Reset internal counters
-        self.day = 0
+        self.step_idx = 0
 
         # Reset financial variables (via PositionState)
         self.position = PositionState(
@@ -141,10 +158,11 @@ class BitcoinTradingEnv:
         self.episode_return = 0.0
 
         # Load first timestep features
-        self.current_price = self.price_ary[self.day]
-        self.current_tech = self.tech_ary[self.day]
-        self.current_turbulence = self.turbulence_ary[self.day]
-        self.current_signal = self.signal_ary[self.day]
+        self.current_price = self.price_ary[self.step_idx]
+        self.current_tech = self.tech_ary[self.step_idx]
+        self.current_turbulence = self.turbulence_ary[self.step_idx]
+        self.current_signal = self.signal_ary[self.step_idx]
+        self.current_datetime = self.datetime_ary[self.step_idx]
 
         # Build initial normalized state
         state = normalize_state(
@@ -177,6 +195,12 @@ class BitcoinTradingEnv:
         done       : bool
         info       : dict (debugging)
         """
+
+        # -------------------------------
+        # Current timestep context (before action)
+        # -------------------------------
+        t = self.step_idx
+        t_datetime = self.current_datetime
 
         # -------------------------------
         # Unpack action
@@ -260,17 +284,18 @@ class BitcoinTradingEnv:
         # Determine episode termination
         # -------------------------------
         is_bankrupt = (new_equity <= 0)  # Agent has lost all equity
-        done = (self.day == self.max_step - 1) or is_bankrupt
+        done = (self.step_idx == self.max_step - 1) or is_bankrupt
 
         # -------------------------------
         # Advance time if not done
         # -------------------------------
         if not done:
-            self.day += 1
-            self.current_price = self.price_ary[self.day]
-            self.current_tech = self.tech_ary[self.day]
-            self.current_turbulence = self.turbulence_ary[self.day]
-            self.current_signal = self.signal_ary[self.day]
+            self.step_idx += 1
+            self.current_price = self.price_ary[self.step_idx]
+            self.current_tech = self.tech_ary[self.step_idx]
+            self.current_turbulence = self.turbulence_ary[self.step_idx]
+            self.current_signal = self.signal_ary[self.step_idx]
+            self.current_datetime = self.datetime_ary[self.step_idx]
 
         # -------------------------------
         # Build next state
@@ -294,6 +319,8 @@ class BitcoinTradingEnv:
         # Info dict for debugging/logs
         # -------------------------------
         info = {
+            "step_idx": t,
+            "timestamp": t_datetime,
             "stop_triggered": stop_triggered,
             "trade_executed": result.trade_executed,
             "effective_delta_btc": result.effective_delta_btc,
