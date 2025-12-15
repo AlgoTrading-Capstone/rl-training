@@ -158,16 +158,6 @@ def collect_backtest_date_range(train_start_dt=None, train_end_dt=None):
         print("\n   Let's try again...\n")
 
 
-def save_metadata(metadata, run_path):
-    """Save metadata dictionary to metadata.json inside run_path."""
-    metadata_file = os.path.join(run_path, "metadata.json")
-    with open(metadata_file, "w") as f:
-        json.dump(metadata, f, indent=4)
-
-    print(f"\nRun folder created: {run_path}")
-    print(f"Metadata saved to: {metadata_file}\n")
-
-
 def select_existing_model_run():
     """
     Let user select an existing trained model run that contains:
@@ -275,7 +265,6 @@ def collect_train_and_backtest_input():
     )
 
     metadata = {
-        "mode": "TRAIN_AND_BACKTEST",
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
@@ -291,11 +280,8 @@ def collect_train_and_backtest_input():
             "end_date": bt_end_dt.strftime("%d-%m-%Y"),
             "overlaps_training": overlap,
         },
-        "data_base_path": os.path.join(run_path, "data"),
-        "data_download_status": "pending",
     }
 
-    save_metadata(metadata, run_path)
     return metadata, run_path
 
 
@@ -306,7 +292,6 @@ def collect_train_only_input():
     train_start_dt, train_end_dt = collect_training_date_range()
 
     metadata = {
-        "mode": "TRAIN_ONLY",
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
@@ -317,11 +302,8 @@ def collect_train_only_input():
             "end_date": train_end_dt.strftime("%d-%m-%Y"),
             "train_test_split": TRAIN_TEST_SPLIT,
         },
-        "data_base_path": os.path.join(run_path, "data"),
-        "data_download_status": "pending",
     }
 
-    save_metadata(metadata, run_path)
     return metadata, run_path
 
 
@@ -341,14 +323,6 @@ def collect_backtest_only_input():
     backtest_path = create_backtest_folder(model_run_path)
 
     metadata = {
-        "mode": "BACKTEST_ONLY",
-        "created_at": datetime.utcnow().isoformat(),
-        "model_run_path": model_run_path,
-        "backtest_path": backtest_path,
-        "training_reference": {
-            "start_date": train_meta["start_date"],
-            "end_date": train_meta["end_date"],
-        },
         "backtest": {
             "start_date": bt_start_dt.strftime("%d-%m-%Y"),
             "end_date": bt_end_dt.strftime("%d-%m-%Y"),
@@ -356,5 +330,4 @@ def collect_backtest_only_input():
         },
     }
 
-    save_metadata(metadata, backtest_path)
     return metadata, backtest_path

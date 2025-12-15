@@ -6,6 +6,7 @@ import os
 from elegantrl.train.config import Config
 from elegantrl.agents import AgentPPO, AgentSAC
 from adapters.elegantrl_bitcoin_env import ElegantRLBitcoinEnv
+from utils.metadata import enrich_metadata_with_training_config
 
 from config import (
     RL_MODEL,
@@ -140,5 +141,8 @@ def build_elegantrl_config(
     erl_config.eval_env_args = eval_env_args
     erl_config.eval_per_step = int(2e4)
     erl_config.eval_times = 8
+
+    # Enrich metadata with full training config
+    enrich_metadata_with_training_config(run_path, algo_cfg)
 
     return erl_config

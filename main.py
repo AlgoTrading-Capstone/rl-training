@@ -13,6 +13,7 @@ from utils.user_input import (
 from rl_configs import build_elegantrl_config
 from elegantrl.train.run import train_agent
 from pathlib import Path
+from utils.metadata import create_metadata_file
 
 
 def run_training_pipeline(metadata, run_path, manager):
@@ -139,7 +140,7 @@ def run_backtest_pipeline(metadata, run_path, manager):
     # --------------------------------------------------------
     # STEP 6: Validate trained actor checkpoint exists
     # --------------------------------------------------------
-    model_run_path = Path(metadata.get("model_run_path", run_path))
+    model_run_path = Path(metadata.get("model_run_path", run_path))  # TODO
     act_path = model_run_path / "elegantrl" / "act.pth"
 
     if not act_path.is_file():
@@ -201,11 +202,13 @@ def main():
     try:
         if run_mode == "TRAIN_AND_BACKTEST":
             metadata, run_path = collect_train_and_backtest_input()
+            create_metadata_file(metadata, run_path)
             run_training_pipeline(metadata, run_path, manager)
             run_backtest_pipeline(metadata, run_path, manager)
 
         elif run_mode == "TRAIN_ONLY":
             metadata, run_path = collect_train_only_input()
+            create_metadata_file(metadata, run_path)
             run_training_pipeline(metadata, run_path, manager)
 
         elif run_mode == "BACKTEST_ONLY":
