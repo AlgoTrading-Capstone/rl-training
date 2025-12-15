@@ -1,5 +1,5 @@
 """
-Collect user input for RL training run metadata.
+Collect user input for RL training and backtesting runs.
 """
 
 import re
@@ -17,7 +17,6 @@ def input_model_name():
             print("Model name cannot be empty.")
             continue
 
-        # Allowed: letters, digits, underscore
         if re.fullmatch(r"[A-Za-z0-9_]+", name):
             return name
 
@@ -25,14 +24,12 @@ def input_model_name():
 
 
 def input_description():
-    """Optional description."""
+    """Ask for an optional short description."""
     return input("Enter short description (optional): ").strip()
 
 
 def input_date(prompt):
-    """
-    Ask for a date with DD-MM-YYYY format, validate, and return datetime object.
-    """
+    """Ask for a date in DD-MM-YYYY format and return a datetime object."""
     while True:
         raw = input(f"{prompt} (DD-MM-YYYY): ").strip()
         try:
@@ -43,78 +40,126 @@ def input_date(prompt):
 
 def create_run_folder(model_name):
     """
-    Creates a run folder based on model name + machine name.
-    Returns the path.
+    Create a run folder based on model name and machine name.
+
+    Raises:
+        FileExistsError: If the run folder already exists.
     """
     folder_name = f"{model_name}_{TRAINING_MACHINE_NAME}"
     run_path = os.path.join(RESULTS_PATH, folder_name)
-    os.makedirs(run_path, exist_ok=True)
+
+    if os.path.exists(run_path):
+        raise FileExistsError(
+            f"A run with name '{folder_name}' already exists.\n"
+            f"Please choose a different model name."
+        )
+
+    os.makedirs(run_path)
     return run_path
 
 
-def collect_user_input():
+def collect_model_and_run_path():
     """
-    Collect metadata for this RL training run.
+    Ask for model name and create a run folder (fail fast if it already exists).
+
     Returns:
-        metadata: dict
+        model_name: str
         run_path: str
     """
+    while True:
+        model_name = input_model_name()
+        try:
+            run_path = create_run_folder(model_name)
+            return model_name, run_path
+        except FileExistsError as e:
+            print(f"\n{e}\n")
 
-    model_name = input_model_name()
-    description = input_description()
 
-    print("\nEnter full session date range.")
-    print("This range will be used for BOTH training and testing.")
-    print(f"The environment will automatically split the range into:")
+def collect_training_date_range():
+    """
+    Collect and confirm training date range.
+
+    Returns:
+        train_start_dt: datetime
+        train_end_dt: datetime
+    """
+    print("\nEnter TRAINING date range.")
+    print(f"The environment will automatically split this range into:")
     print(f" - Training: {int(TRAIN_TEST_SPLIT * 100)}%")
     print(f" - Testing : {int((1 - TRAIN_TEST_SPLIT) * 100)}%\n")
 
     while True:
-        start_dt = input_date("Start date")
-        end_dt = input_date("End date")
+        start_dt = input_date("Training start date")
+        end_dt = input_date("Training end date")
 
-        # Validate chronological order
         if start_dt >= end_dt:
-            print("Start date must be earlier than end date. Please try again.\n")
+            print("Training start date must be earlier than end date.\n")
             continue
 
-        # Show parsed dates for confirmation
-        print(f"\n   Parsed dates:")
-        print(f"   Start: {start_dt.strftime('%B %d, %Y')} ({start_dt.strftime('%Y-%m-%d')})")
-        print(f"   End:   {end_dt.strftime('%B %d, %Y')} ({end_dt.strftime('%Y-%m-%d')})")
-
-        # Calculate duration
         duration_days = (end_dt - start_dt).days
-        print(f"   Duration: {duration_days} days (~{duration_days/30:.1f} months)\n")
+        print(f"\n   Training period:")
+        print(f"   Start: {start_dt.strftime('%Y-%m-%d')}")
+        print(f"   End:   {end_dt.strftime('%Y-%m-%d')}")
+        print(f"   Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
 
-        # Confirm with user
         confirm = input("   Is this correct? (yes/no): ").strip().lower()
-        if confirm in ['yes', 'y']:
-            break
-        else:
-            print("\n   Let's try again...\n")
+        if confirm in ("yes", "y"):
+            return start_dt, end_dt
 
-    # Format dates for metadata
-    start_str = start_dt.strftime("%d-%m-%Y")
-    end_str = end_dt.strftime("%d-%m-%Y")
+        print("\n   Let's try again...\n")
 
-    # Create folder
-    run_path = create_run_folder(model_name)
 
-    # Build metadata object
-    metadata = {
-        "model_name": model_name,
-        "machine_name": TRAINING_MACHINE_NAME,
-        "description": description,
-        "start_date": start_str,
-        "end_date": end_str,
-        "created_at": datetime.utcnow().isoformat(),
-        "results_path": run_path,
-        "data_base_path": os.path.join(run_path, "data"),
-        "data_download_status": "pending",
-    }
+def collect_backtest_date_range(train_start_dt=None, train_end_dt=None):
+    """
+    Collect and confirm backtest date range.
+    Optionally checks overlap with a training range.
 
-    # Save metadata.json
+    Returns:
+        bt_start_dt: datetime
+        bt_end_dt: datetime
+        overlap: bool
+    """
+    print("\nEnter BACKTEST date range.")
+    print("This range will be used ONLY for backtesting the model.\n")
+
+    while True:
+        bt_start_dt = input_date("Backtest start date")
+        bt_end_dt = input_date("Backtest end date")
+
+        if bt_start_dt >= bt_end_dt:
+            print("Backtest start date must be earlier than end date.\n")
+            continue
+
+        overlap = False
+        if train_start_dt and train_end_dt:
+            overlap = not (bt_end_dt <= train_start_dt or bt_start_dt >= train_end_dt)
+
+            if overlap:
+                print("\n⚠ WARNING: Backtest date range OVERLAPS with training period!")
+                print(f"   Training: {train_start_dt.strftime('%Y-%m-%d')} → {train_end_dt.strftime('%Y-%m-%d')}")
+                print(f"   Backtest: {bt_start_dt.strftime('%Y-%m-%d')} → {bt_end_dt.strftime('%Y-%m-%d')}")
+                print("\nRunning backtest on overlapping data may cause data leakage.")
+
+                proceed = input("\nDo you want to continue anyway? (yes/no): ").strip().lower()
+                if proceed not in ("yes", "y"):
+                    print("\n   Please enter backtest dates again.\n")
+                    continue
+
+        duration_days = (bt_end_dt - bt_start_dt).days
+        print(f"\n   Backtest period:")
+        print(f"   Start: {bt_start_dt.strftime('%Y-%m-%d')}")
+        print(f"   End:   {bt_end_dt.strftime('%Y-%m-%d')}")
+        print(f"   Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
+
+        confirm = input("   Is this correct? (yes/no): ").strip().lower()
+        if confirm in ("yes", "y"):
+            return bt_start_dt, bt_end_dt, overlap
+
+        print("\n   Let's try again...\n")
+
+
+def save_metadata(metadata, run_path):
+    """Save metadata dictionary to metadata.json inside run_path."""
     metadata_file = os.path.join(run_path, "metadata.json")
     with open(metadata_file, "w") as f:
         json.dump(metadata, f, indent=4)
@@ -122,4 +167,194 @@ def collect_user_input():
     print(f"\nRun folder created: {run_path}")
     print(f"Metadata saved to: {metadata_file}\n")
 
+
+def select_existing_model_run():
+    """
+    Let user select an existing trained model run that contains:
+    - metadata.json
+    - elegantrl/act.pth
+
+    Returns:
+        model_run_path: str
+        model_metadata: dict
+    """
+    valid_runs = []
+
+    for d in os.listdir(RESULTS_PATH):
+        run_path = os.path.join(RESULTS_PATH, d)
+        if not os.path.isdir(run_path):
+            continue
+
+        metadata_file = os.path.join(run_path, "metadata.json")
+        model_file = os.path.join(run_path, "elegantrl", "act.pth")
+
+        if os.path.exists(metadata_file) and os.path.exists(model_file):
+            valid_runs.append(d)
+
+    if not valid_runs:
+        raise RuntimeError(
+            "No valid trained models found.\n"
+            "Expected each run to contain metadata.json and elegantrl/act.pth."
+        )
+
+    print("\nAvailable trained models:")
+    for idx, run in enumerate(valid_runs, 1):
+        print(f"{idx}. {run}")
+
+    while True:
+        choice = input("\nSelect model by number: ").strip()
+
+        if not choice.isdigit() or not (1 <= int(choice) <= len(valid_runs)):
+            print("Invalid selection. Please enter a valid number.")
+            continue
+
+        selected_run = valid_runs[int(choice) - 1]
+        run_path = os.path.join(RESULTS_PATH, selected_run)
+
+        with open(os.path.join(run_path, "metadata.json"), "r") as f:
+            metadata = json.load(f)
+
+        if "training" not in metadata:
+            raise ValueError("Selected model metadata does not contain training information.")
+
+        return run_path, metadata
+
+
+def create_backtest_folder(model_run_path):
+    """
+    Create a new backtest folder inside an existing model run.
+
+    Returns:
+        backtest_path: str
+    """
+    backtests_root = os.path.join(model_run_path, "backtests")
+    os.makedirs(backtests_root, exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    backtest_path = os.path.join(backtests_root, f"bt_{timestamp}")
+    os.makedirs(backtest_path)
+
+    return backtest_path
+
+
+def collect_run_mode():
+    """
+    Ask user which execution mode to run.
+
+    Returns:
+        run_mode (str)
+    """
+    print("Select execution mode:")
+    print("1 - Train new model and run backtest automatically")
+    print("2 - Train new model only")
+    print("3 - Run backtest on existing model\n")
+
+    valid_choices = {
+        "1": "TRAIN_AND_BACKTEST",
+        "2": "TRAIN_ONLY",
+        "3": "BACKTEST_ONLY",
+    }
+
+    while True:
+        choice = input("Enter choice (1/2/3): ").strip()
+        if choice in valid_choices:
+            return valid_choices[choice]
+
+        print("Invalid selection. Please enter 1, 2, or 3.\n")
+
+
+def collect_train_and_backtest_input():
+    """Collect metadata for RL training followed by backtesting."""
+    model_name, run_path = collect_model_and_run_path()
+    description = input_description()
+
+    train_start_dt, train_end_dt = collect_training_date_range()
+    bt_start_dt, bt_end_dt, overlap = collect_backtest_date_range(
+        train_start_dt=train_start_dt,
+        train_end_dt=train_end_dt
+    )
+
+    metadata = {
+        "mode": "TRAIN_AND_BACKTEST",
+        "model_name": model_name,
+        "machine_name": TRAINING_MACHINE_NAME,
+        "description": description,
+        "created_at": datetime.utcnow().isoformat(),
+        "results_path": run_path,
+        "training": {
+            "start_date": train_start_dt.strftime("%d-%m-%Y"),
+            "end_date": train_end_dt.strftime("%d-%m-%Y"),
+            "train_test_split": TRAIN_TEST_SPLIT,
+        },
+        "backtest": {
+            "start_date": bt_start_dt.strftime("%d-%m-%Y"),
+            "end_date": bt_end_dt.strftime("%d-%m-%Y"),
+            "overlaps_training": overlap,
+        },
+        "data_base_path": os.path.join(run_path, "data"),
+        "data_download_status": "pending",
+    }
+
+    save_metadata(metadata, run_path)
     return metadata, run_path
+
+
+def collect_train_only_input():
+    """Collect metadata for RL training only."""
+    model_name, run_path = collect_model_and_run_path()
+    description = input_description()
+    train_start_dt, train_end_dt = collect_training_date_range()
+
+    metadata = {
+        "mode": "TRAIN_ONLY",
+        "model_name": model_name,
+        "machine_name": TRAINING_MACHINE_NAME,
+        "description": description,
+        "created_at": datetime.utcnow().isoformat(),
+        "results_path": run_path,
+        "training": {
+            "start_date": train_start_dt.strftime("%d-%m-%Y"),
+            "end_date": train_end_dt.strftime("%d-%m-%Y"),
+            "train_test_split": TRAIN_TEST_SPLIT,
+        },
+        "data_base_path": os.path.join(run_path, "data"),
+        "data_download_status": "pending",
+    }
+
+    save_metadata(metadata, run_path)
+    return metadata, run_path
+
+
+def collect_backtest_only_input():
+    """Collect metadata for backtesting an existing trained model."""
+    model_run_path, model_metadata = select_existing_model_run()
+
+    train_meta = model_metadata["training"]
+    train_start_dt = datetime.strptime(train_meta["start_date"], "%d-%m-%Y")
+    train_end_dt = datetime.strptime(train_meta["end_date"], "%d-%m-%Y")
+
+    bt_start_dt, bt_end_dt, overlap = collect_backtest_date_range(
+        train_start_dt=train_start_dt,
+        train_end_dt=train_end_dt
+    )
+
+    backtest_path = create_backtest_folder(model_run_path)
+
+    metadata = {
+        "mode": "BACKTEST_ONLY",
+        "created_at": datetime.utcnow().isoformat(),
+        "model_run_path": model_run_path,
+        "backtest_path": backtest_path,
+        "training_reference": {
+            "start_date": train_meta["start_date"],
+            "end_date": train_meta["end_date"],
+        },
+        "backtest": {
+            "start_date": bt_start_dt.strftime("%d-%m-%Y"),
+            "end_date": bt_end_dt.strftime("%d-%m-%Y"),
+            "overlaps_training": overlap,
+        },
+    }
+
+    save_metadata(metadata, backtest_path)
+    return metadata, backtest_path
