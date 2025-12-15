@@ -304,7 +304,7 @@ class Learner(Process):
 
             '''COMMUNICATE between Learners: Learner send actor to other Learners'''
             _buffer_len = num_envs * num_workers
-            _buffer_items_tensor = [t[:, :_buffer_len].cpu().detach_() for t in buffer_items_tensor]
+            _buffer_items_tensor = [t[:, :_buffer_len].cpu().detach() for t in buffer_items_tensor]  # FIX: detach_() to detach()
             for shift_id in range(num_communications):
                 _learner_pipe = self.learners_pipe[learner_id][0]
                 _learner_pipe.send(_buffer_items_tensor)
