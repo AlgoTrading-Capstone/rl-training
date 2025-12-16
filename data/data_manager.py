@@ -1101,6 +1101,6 @@ class DataManager:
         print(f"  Tech array shape: {tech_array.shape} (indicators only)")
         print(f"  Turbulence array shape: {turbulence_array.shape} (turbulence + VIX)")
         print(f"  Signal array shape: {signal_array.shape} (strategy signals)")
-        print(f"  Datetime array shape: {datetime_array.shape} (date-time info)")
+        print(f"  Datetime array: {datetime_array.shape[0]} timestamps (date-time info)")
 
         return arrays
