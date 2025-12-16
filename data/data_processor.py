@@ -403,7 +403,10 @@ class CcxtProcessor:
             # VIX is daily, Bitcoin is 15-minute candles
             # Match by date only (not time)
             df['date_only'] = df['date'].dt.date
-            vix_df['date_only'] = vix_df['date'].dt.date
+
+            # Shift VIX dates forward by 1 day so VIX from day N is applied to day N+1
+            # This prevents look-ahead bias (candles on day N use VIX from N-1 close)
+            vix_df['date_only'] = (pd.to_datetime(vix_df['date']) + pd.Timedelta(days=1)).dt.date
 
             # Merge VIX data
             df = df.merge(
@@ -412,24 +415,53 @@ class CcxtProcessor:
                 how='left'
             )
 
-            # Forward fill VIX for weekends/holidays
-            df['vix'] = df['vix'].ffill()
+            # Debug: Verify no look-ahead bias
+            print(f"  VIX date shift applied (prevents look-ahead bias)")
+            if len(df) > 0:
+                sample = df[['date', 'vix']].head(5)
+                print(f"  First 5 rows after merge:")
+                for _, row in sample.iterrows():
+                    vix_val = row['vix'] if pd.notna(row['vix']) else 'NaN'
+                    print(f"    {row['date'].strftime('%Y-%m-%d %H:%M')} → VIX={vix_val}")
 
-            # Backward fill if VIX starts after our data
+            # Backward fill FIRST - handles case where VIX starts after Bitcoin data
             df['vix'] = df['vix'].bfill()
+
+            # Forward fill SECOND - propagates VIX through weekends/holidays
+            df['vix'] = df['vix'].ffill()
 
             # Drop temporary column
             df = df.drop('date_only', axis=1)
 
-            # Statistics
+            # Statistics and validation
             vix_coverage = (df['vix'].notna().sum() / len(df)) * 100
             avg_vix = df['vix'].mean()
             max_vix = df['vix'].max()
             min_vix = df['vix'].min()
 
             print(f"   Real VIX added")
+            print(f"   Coverage: {vix_coverage:.1f}%")
             print(f"   Average VIX: {avg_vix:.2f}")
             print(f"   Range: {min_vix:.2f} - {max_vix:.2f}")
+
+            # Moderate validation: warn < 95%, error < 50%
+            if vix_coverage < 95.0:
+                print(f"  ⚠️  WARNING: VIX coverage is {vix_coverage:.1f}% (< 95%)")
+                print(f"      Some Bitcoin candles may have interpolated VIX data")
+
+            if vix_coverage < 50.0:
+                raise ValueError(
+                    f"VIX coverage critically low ({vix_coverage:.1f}%). "
+                    f"Check date range alignment with VIX availability."
+                )
+
+            # Final check: ensure NO NaNs remain after fill operations
+            if df['vix'].isna().any():
+                nan_count = df['vix'].isna().sum()
+                raise ValueError(
+                    f"VIX column contains {nan_count} NaN values after fill operations. "
+                    f"VIX data may be completely unavailable for your date range."
+                )
 
             return df
 
@@ -501,6 +533,15 @@ class CcxtProcessor:
 
         # Handle NaN and Inf values in numeric arrays
         tech_array = np.nan_to_num(tech_array, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Defensive check: turbulence_array should NEVER have NaNs at this point
+        if np.isnan(turbulence_array).any():
+            nan_count = np.isnan(turbulence_array).sum()
+            raise ValueError(
+                f"Turbulence array contains {nan_count} NaN values. "
+                f"VIX or turbulence data incomplete. Check add_vix() and add_turbulence()."
+            )
+
         turbulence_array = np.nan_to_num(turbulence_array, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Shapes printed in data_manager.py (removed duplicate)
