@@ -68,8 +68,7 @@ class _LoggerView:
     @contextmanager
     def phase(self, name: str, phase_num: int, total_phases: int):
         """Log phase start + duration, and always log SUCCESS/FAILED appropriately."""
-        header = f"{'=' * 60}\nPhase {phase_num}/{total_phases}: {name}\n{'=' * 60}"
-        self.bound.info(header)
+        self.bound.info(f"[Phase {phase_num}/{total_phases}] {name}")
         start = time.time()
         failed = False
         try:
@@ -77,12 +76,12 @@ class _LoggerView:
         except Exception as e:
             failed = True
             elapsed = time.time() - start
-            self.bound.error(f"Phase {phase_num}/{total_phases} FAILED after {elapsed:.2f}s: {e}")
+            self.bound.error(f"[Phase {phase_num}/{total_phases}] FAILED after {elapsed:.2f}s: {e}")
             raise
         finally:
             if not failed:
                 elapsed = time.time() - start
-                self.bound.success(f"Phase {phase_num}/{total_phases} completed in {elapsed:.2f}s")
+                self.bound.success(f"[Phase {phase_num}/{total_phases}] Completed in {elapsed:.2f}s")
 
 
 class RLLogger:

@@ -6,6 +6,7 @@ import re
 import os
 import json
 from datetime import datetime
+import config
 from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
 
 
@@ -227,14 +228,15 @@ def create_backtest_folder(model_run_path):
     return backtest_path
 
 
-def collect_run_mode():
+def collect_run_mode(logger=None):
     """
     Ask user which execution mode to run.
 
     Returns:
         run_mode (str)
     """
-    print("Select execution mode:")
+    # Interactive prompts use print() (not logger)
+    print("\nSelect execution mode:")
     print("1 - Train new model and run backtest automatically")
     print("2 - Train new model only")
     print("3 - Run backtest on existing model\n")
@@ -268,6 +270,7 @@ def collect_train_and_backtest_input():
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
+        "mode": "TRAIN_AND_BACKTEST",
         "created_at": datetime.utcnow().isoformat(),
         "results_path": run_path,
         "training": {
@@ -279,6 +282,16 @@ def collect_train_and_backtest_input():
             "start_date": bt_start_dt.strftime("%d-%m-%Y"),
             "end_date": bt_end_dt.strftime("%d-%m-%Y"),
             "overlaps_training": overlap,
+        },
+        "rl": {
+            "model": config.RL_MODEL,
+            "learning_rate": config.LEARNING_RATE,
+            "gamma": config.GAMMA,
+            "net_dims": config.NET_DIMS,
+        },
+        "strategies": {
+            "enabled": config.ENABLE_STRATEGIES,
+            "strategy_list": config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
         },
     }
 
@@ -295,12 +308,23 @@ def collect_train_only_input():
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
+        "mode": "TRAIN_ONLY",
         "created_at": datetime.utcnow().isoformat(),
         "results_path": run_path,
         "training": {
             "start_date": train_start_dt.strftime("%d-%m-%Y"),
             "end_date": train_end_dt.strftime("%d-%m-%Y"),
             "train_test_split": TRAIN_TEST_SPLIT,
+        },
+        "rl": {
+            "model": config.RL_MODEL,
+            "learning_rate": config.LEARNING_RATE,
+            "gamma": config.GAMMA,
+            "net_dims": config.NET_DIMS,
+        },
+        "strategies": {
+            "enabled": config.ENABLE_STRATEGIES,
+            "strategy_list": config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
         },
     }
 

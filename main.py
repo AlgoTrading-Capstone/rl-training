@@ -224,7 +224,7 @@ def main():
     # --------------------------------------------------------
     # STEP 1: Determine run mode and collect user input
     # --------------------------------------------------------
-    run_mode = collect_run_mode()
+    run_mode = collect_run_mode(logger=temp_logger)
 
     try:
         if run_mode == "TRAIN_AND_BACKTEST":

@@ -31,7 +31,7 @@ class Formatter:
             "",
             "MODEL DETAILS:",
             f"  Name: {metadata.get('model_name', 'N/A')}",
-            f"  Description: {metadata.get('description', 'N/A')}",
+            f"  Description: {metadata.get('description', 'N/A') or 'None'}",
             f"  Mode: {metadata.get('mode', 'N/A')}",
             "",
             "DATE RANGES:",
@@ -47,17 +47,25 @@ class Formatter:
                 f"  Backtest: {metadata['backtest'].get('start_date', 'N/A')} to {metadata['backtest'].get('end_date', 'N/A')}",
             ])
 
+        # RL config (may be enriched later)
+        rl_config = metadata.get('rl', {})
         lines.extend([
             "",
             "RL CONFIGURATION:",
-            f"  Algorithm: {metadata.get('rl_model', 'N/A')}",
-            f"  Learning Rate: {metadata.get('learning_rate', 'N/A')}",
-            f"  Gamma: {metadata.get('gamma', 'N/A')}",
-            f"  Network Dims: {metadata.get('net_dims', 'N/A')}",
+            f"  Algorithm: {rl_config.get('model', 'N/A')}",
+            f"  Learning Rate: {rl_config.get('learning_rate', 'N/A')}",
+            f"  Gamma: {rl_config.get('gamma', 'N/A')}",
+            f"  Network Dims: {rl_config.get('net_dims', 'N/A')}",
+        ])
+
+        # Strategies config (may be enriched later)
+        strategies_config = metadata.get('strategies', {})
+        strategy_list = strategies_config.get('strategy_list', [])
+        lines.extend([
             "",
             "STRATEGIES:",
-            f"  Enabled: {metadata.get('strategies_enabled', 'N/A')}",
-            f"  List: {', '.join(metadata.get('strategy_list', [])) if metadata.get('strategy_list') else 'None'}",
+            f"  Enabled: {strategies_config.get('enabled', 'N/A')}",
+            f"  List: {', '.join(strategy_list) if strategy_list else 'None'}",
             "",
             "=" * 60,
         ])
