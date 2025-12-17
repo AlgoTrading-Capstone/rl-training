@@ -28,6 +28,7 @@ from strategies.base_strategy import SignalType
 from strategies.registry import StrategyRegistry
 from utils.timeframes import timeframe_to_minutes
 from utils.resampling import resample_to_interval, resampled_merge
+from utils.progress import ProgressTracker
 
 
 # ============================================================================
@@ -777,7 +778,7 @@ class DataManager:
         use_parallel = len(strategy_names) > 1 and max_workers > 1
 
         if use_parallel:
-            print(f"  Using {max_workers} parallel workers")
+            self.logger.debug(f"Using {max_workers} parallel workers")
 
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 # Submit tasks
@@ -794,7 +795,12 @@ class DataManager:
                     )
                     futures[future] = name
 
-                # Collect results
+                # Collect results with progress bar
+                pbar = ProgressTracker.process_items(
+                    total=len(strategy_names),
+                    desc="Executing strategies",
+                    unit="strategy"
+                )
                 for future in as_completed(futures):
                     name = futures[future]
                     try:
@@ -804,12 +810,15 @@ class DataManager:
                         df[f'strategy_{name_lower}_long'] = signal_arrays['long']
                         df[f'strategy_{name_lower}_short'] = signal_arrays['short']
                         df[f'strategy_{name_lower}_hold'] = signal_arrays['hold']
-                        print(f"    Completed: {strategy_name}")
+                        pbar.set_postfix_str(f"{strategy_name}")
+                        pbar.update(1)
                     except Exception as e:
-                        print(f"    Failed: {name} - {e}")
+                        self.logger.error(f"Strategy {name} failed: {e}")
                         # Set all HOLD as fallback
                         name_lower = name.lower()
                         df[f'strategy_{name_lower}_hold'] = 1.0
+                        pbar.update(1)
+                pbar.close()
         else:
             # Sequential execution
             print("  Using sequential execution")

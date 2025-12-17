@@ -11,6 +11,7 @@ import pandas as pd
 import talib
 from datetime import datetime
 import config
+from utils.progress import ProgressTracker
 
 
 class CcxtProcessor:
@@ -173,6 +174,23 @@ class CcxtProcessor:
         # Determine chunk size based on exchange
         limit = 1000 if self.exchange_name == 'binance' else 720
 
+        # Estimate total chunks for progress bar
+        # Calculate milliseconds per candle based on timeframe
+        timeframe_ms = {
+            '1m': 60 * 1000,
+            '5m': 5 * 60 * 1000,
+            '15m': 15 * 60 * 1000,
+            '1h': 60 * 60 * 1000,
+            '4h': 4 * 60 * 60 * 1000,
+            '1d': 24 * 60 * 60 * 1000,
+        }.get(timeframe, 15 * 60 * 1000)  # Default to 15m
+
+        estimated_candles = (until - since) / timeframe_ms
+        estimated_chunks = max(1, int(estimated_candles / limit))
+
+        # Create progress bar
+        pbar = ProgressTracker.download_chunks(total=estimated_chunks, desc=f"Downloading {symbol}")
+
         while current_since < until:
             try:
                 # Fetch one chunk
@@ -184,14 +202,13 @@ class CcxtProcessor:
                 )
 
                 if not candles:
-                    print("   No more data available")
                     break
 
                 # Add to collection
                 all_candles.extend(candles)
 
-                # Progress indicator
-                progress_date = datetime.fromtimestamp(candles[-1][0] / 1000) #candels[-1][0] is the timestamp of the last candle in milliseconds and divide by 1000 to convert to seconds
+                # Update progress bar
+                pbar.update(1)
 
                 # Move to next chunk
                 current_since = candles[-1][0] + 1
@@ -201,16 +218,21 @@ class CcxtProcessor:
                     break
 
             except ccxt.NetworkError as e:
-                print(f"   Network error: {e}. Retrying...")
+                print(f"\n   Network error: {e}. Retrying...")
                 continue
 
             except ccxt.ExchangeError as e:
-                print(f"   Exchange error: {e}")
+                print(f"\n   Exchange error: {e}")
                 break
 
             except Exception as e:
-                print(f"   Unexpected error: {e}")
+                print(f"\n   Unexpected error: {e}")
                 break
+
+        # Ensure progress bar reaches 100% and close
+        if pbar.n < pbar.total:
+            pbar.update(pbar.total - pbar.n)
+        pbar.close()
 
         return all_candles
     #TODO: this function need to be tested
@@ -369,16 +391,19 @@ class CcxtProcessor:
             import yfinance as yf
 
             # Get date range from our data
-            start_date = df['date'].min().strftime('%Y-%m-%d')
-            end_date = df['date'].max().strftime('%Y-%m-%d')
+            start_date = df['date'].min()
+            end_date = df['date'].max()
 
-            print(f"  Date range: {start_date} to {end_date}")
+            print(f"  Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
 
             # Download VIX data
+            # IMPORTANT: yfinance end parameter is EXCLUSIVE, so add 1 day
+            end_date_exclusive = end_date + pd.Timedelta(days=1)
+
             vix_data = yf.download(
                 config.VIX_SYMBOL,
-                start=start_date,
-                end=end_date,
+                start=start_date.strftime('%Y-%m-%d'),
+                end=end_date_exclusive.strftime('%Y-%m-%d'),
                 progress=False,
                 auto_adjust=True  # Explicitly set to avoid warning
             )
