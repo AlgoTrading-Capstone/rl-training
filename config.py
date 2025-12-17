@@ -127,6 +127,12 @@ TRAINING_MACHINE_NAME = "OmerPC"
 # Data will be stored per-run in: results/{model_name}_{machine_name}/data/
 RESULTS_PATH = "results"
 
+# Logging configuration
+# Console log level determines what appears in terminal output (INFO shows major milestones, DEBUG shows everything)
+LOG_LEVEL = "INFO"
+# File log level for detailed debugging (logs are saved to {run_path}/logs/)
+FILE_LOG_LEVEL = "DEBUG"
+
 # ============================================================
 # Strategy Integration Configuration
 # ============================================================
