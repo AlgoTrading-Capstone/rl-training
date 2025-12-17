@@ -204,7 +204,8 @@ class DataManager:
         exchange: str = None,
         trading_pair: str = None,
         base_timeframe: str = None,
-        storage_path: str = None
+        storage_path: str = None,
+        logger=None
     ):
         """
         Initialize DataManager.
@@ -215,7 +216,17 @@ class DataManager:
             base_timeframe: Base data timeframe (default: config.DATA_TIMEFRAME)
             storage_path: Root storage path (default: config.DATA_ROOT_PATH)
                          DEPRECATED - use config.DATA_ROOT_PATH instead
+            logger: Logger instance (optional, will create fallback if None)
         """
+        # Store logger with safe fallback
+        if logger:
+            from utils.logger import LogComponent
+            self.logger = logger.for_component(LogComponent.DATA)
+        else:
+            # Fallback: create a minimal logger (no file output)
+            from utils.logger import RLLogger, LogComponent
+            self.logger = RLLogger(run_path=None, component=LogComponent.DATA).view()
+
         self.exchange = exchange or config.EXCHANGE_NAME
         self.trading_pair = trading_pair or config.TRADING_PAIR
         self.base_timeframe = base_timeframe or config.DATA_TIMEFRAME
@@ -235,11 +246,7 @@ class DataManager:
         # Initialize CcxtProcessor for downloads
         self.processor = CcxtProcessor(self.exchange)
 
-        print(f"DataManager initialized:")
-        print(f"  Exchange: {self.exchange}")
-        print(f"  Pair: {self.trading_pair}")
-        print(f"  Timeframe: {self.base_timeframe}")
-        print(f"  Storage: {self.storage_path}")
+        self.logger.info(f"DataManager initialized: {self.exchange} {self.trading_pair} {self.base_timeframe}")
 
     # ========================================================================
     # Phase 1: Smart Incremental Download
@@ -320,7 +327,7 @@ class DataManager:
         mask = (df['date'] >= requested_start) & (df['date'] <= requested_end)
         filtered = df[mask].copy()
 
-        print(f"[INFO] Filtered {len(df)} rows → {len(filtered)} rows (requested range)")
+        self.logger.debug(f"Filtered {len(df)} rows → {len(filtered)} rows (requested range)")
 
         return filtered
 
@@ -996,27 +1003,27 @@ class DataManager:
             processed_path = self.storage_path / "training_data" / "processed" / self._get_processed_filename()
 
             if processed_path.exists():
-                print(f"[INFO] Detected existing Processed Data at {processed_path}")
+                self.logger.info(f"Found cached data at {processed_path.name}")
                 df = pd.read_parquet(processed_path)
 
                 # Validate date range (superset match)
                 if self._validate_date_range(df, start_date, end_date):
-                    print(f"[INFO] Date range validated. Checking features...")
+                    self.logger.debug("Date range validated. Checking features...")
 
                     # 1. INDICATOR CHECK
                     missing_indicators = [ind for ind in config.INDICATORS if ind not in df.columns]
                     if missing_indicators:
-                        print(f"[INFO] Missing indicators: {missing_indicators}")
-                        print(f"[INFO] Calculating missing indicators...")
+                        self.logger.info(f"Missing indicators: {missing_indicators}")
+                        self.logger.debug("Calculating missing indicators...")
                         df = self.processor.add_technical_indicator(df, missing_indicators)
                         updated = True
                     else:
-                        print(f"[INFO] All indicators present ({len(config.INDICATORS)} total)")
+                        self.logger.debug(f"All indicators present ({len(config.INDICATORS)} total)")
 
                     # 2. STRATEGY CHECK (Smart Incremental Update)
                     if config.ENABLE_STRATEGIES and strategy_list:
                         existing_strategies = self._detect_existing_strategies(df)
-                        print(f"[INFO] Existing strategies: {existing_strategies}")
+                        self.logger.debug(f"Existing strategies: {existing_strategies}")
 
                         # Use existing filter logic to determine what needs execution
                         strategies_to_execute = self._filter_strategies_to_execute(
@@ -1027,23 +1034,23 @@ class DataManager:
                         )
 
                         if strategies_to_execute:
-                            print(f"[INFO] Executing {len(strategies_to_execute)} missing/invalid strategy(s)...")
+                            self.logger.debug(f"Executing {len(strategies_to_execute)} missing/invalid strategy(s)...")
                             df = self._execute_strategies_parallel(df, strategies_to_execute)
                             updated = True
                         else:
-                            print(f"[INFO] All strategies valid ({len(existing_strategies)} total)")
+                            self.logger.debug(f"All strategies valid ({len(existing_strategies)} total)")
 
                     # 3. AUTO-SAVE if updated
                     if updated:
-                        print(f"[INFO] Features updated. Saving to {processed_path}...")
+                        self.logger.debug(f"Features updated. Saving...")
                         self._save_processed_data(df, processed_path)
 
                     # Filter to requested range and return
-                    print(f"[INFO] Loading cached processed data (fast path)")
+                    self.logger.info("Loading from cache (fast path)")
                     df = self._filter_date_range(df, start_date, end_date)
                     return df  # IMMEDIATE RETURN
                 else:
-                    print(f"[WARNING] Date range insufficient. Falling back to raw data...")
+                    self.logger.warning("Date range insufficient. Falling back to raw data...")
 
         # STEP B: Fallback to raw data + full processing
         print("\n=== Phase 1: Downloading data ===")

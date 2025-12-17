@@ -219,6 +219,7 @@ def main():
         exchange=config.EXCHANGE_NAME,
         trading_pair=config.TRADING_PAIR,
         base_timeframe=config.DATA_TIMEFRAME,
+        logger=temp_logger,
     )
 
     # --------------------------------------------------------
