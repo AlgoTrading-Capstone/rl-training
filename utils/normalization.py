@@ -120,3 +120,140 @@ def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, ho
     ).astype(np.float32) # Cast to float32: Standard input format for Deep Learning models
 
     return state
+
+
+def inverse_normalize_state(
+    *,
+    state_norm: np.ndarray,
+    price_vec: np.ndarray,
+    tech_vec: np.ndarray,
+    turbulence_vec: np.ndarray,
+    signal_vec: np.ndarray,
+) -> dict:
+    """
+    Inverse normalization for human-readable backtesting.
+
+    IMPORTANT:
+    - This function is intended ONLY for logging / analysis.
+    - It does NOT guarantee perfect numerical inversion (especially for tanh-squashed features).
+
+    Returns:
+        dict with readable, de-normalized values grouped by domain.
+    """
+
+    result = {}
+
+    # ---------------------------------------------------------
+    # Reference price (Close)
+    # ---------------------------------------------------------
+    close_price = float(price_vec[3])
+    if close_price <= 0:
+        close_price = 1.0
+
+    idx = 0
+
+    # ---------------------------------------------------------
+    # Balance
+    # ---------------------------------------------------------
+    norm_balance = state_norm[idx]
+    idx += 1
+    result["balance"] = float(norm_balance * INITIAL_BALANCE)
+
+    # ---------------------------------------------------------
+    # Price (OHLC + Volume)
+    # ---------------------------------------------------------
+    # OHLC normalized relative to close
+    norm_open, norm_high, norm_low, _ = state_norm[idx : idx + 4]
+    idx += 4
+
+    result["open"] = float(norm_open * close_price)
+    result["high"] = float(norm_high * close_price)
+    result["low"] = float(norm_low * close_price)
+    result["close"] = close_price
+
+    # Volume: inverse of log1p(vol) / 20
+    norm_vol = state_norm[idx]
+    idx += 1
+    result["volume"] = float(np.expm1(norm_vol * 20.0))
+
+    # ---------------------------------------------------------
+    # Technical Indicators (RAW, readable)
+    # ---------------------------------------------------------
+    tech_raw = {}
+
+    # NOTE:
+    # Indices here MUST match normalize_state exactly.
+    # We intentionally reconstruct from state_norm, not tech_vec.
+
+    # MACD (scaled by 50 and relative to price)
+    macd_norm = state_norm[idx]
+    tech_raw["macd"] = float((macd_norm / 50.0) * close_price)
+    idx += 1
+
+    # Bollinger Upper
+    boll_ub_norm = state_norm[idx]
+    tech_raw["boll_ub"] = float(boll_ub_norm * close_price)
+    idx += 1
+
+    # Bollinger Lower
+    boll_lb_norm = state_norm[idx]
+    tech_raw["boll_lb"] = float(boll_lb_norm * close_price)
+    idx += 1
+
+    # RSI
+    rsi_norm = state_norm[idx]
+    tech_raw["rsi"] = float(rsi_norm * 100.0)
+    idx += 1
+
+    # DX
+    dx_norm = state_norm[idx]
+    tech_raw["dx"] = float(dx_norm * 100.0)
+    idx += 1
+
+    # SMA 30
+    sma30_norm = state_norm[idx]
+    tech_raw["sma_30"] = float(sma30_norm * close_price)
+    idx += 1
+
+    # SMA 60
+    sma60_norm = state_norm[idx]
+    tech_raw["sma_60"] = float(sma60_norm * close_price)
+    idx += 1
+
+    result["indicators"] = tech_raw
+
+    # ---------------------------------------------------------
+    # Turbulence / VIX (approx inverse of tanh)
+    # ---------------------------------------------------------
+    turb_raw = {}
+
+    if ENABLE_TURBULENCE:
+        norm_turb = state_norm[idx]
+        idx += 1
+        # inverse tanh
+        turb_raw["turbulence"] = float(np.arctanh(np.clip(norm_turb, -0.999, 0.999)) / 20.0)
+
+    if ENABLE_VIX:
+        norm_vix = state_norm[idx]
+        idx += 1
+        turb_raw["vix"] = float(np.arctanh(np.clip(norm_vix, -0.999, 0.999)) * 100.0)
+
+    result["turbulence"] = turb_raw
+
+    # ---------------------------------------------------------
+    # Strategies (binary, as-is)
+    # ---------------------------------------------------------
+    num_strategy_vals = len(signal_vec)
+    result["strategies_raw"] = signal_vec[:num_strategy_vals].tolist()
+    idx += num_strategy_vals
+
+    # ---------------------------------------------------------
+    # Holdings
+    # ---------------------------------------------------------
+    norm_holdings = state_norm[idx]
+    if MAX_POSITION_BTC > 0:
+        result["holdings"] = float(norm_holdings * MAX_POSITION_BTC)
+    else:
+        result["holdings"] = 0.0
+
+    return result
