@@ -10,35 +10,75 @@ from datetime import datetime
 import config
 from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
 from utils.metadata import load_metadata
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+# Initialize rich console for styled output
+console = Console()
+
+
+def styled_header(text: str) -> None:
+    """Display styled header matching logger.py format."""
+    console.print(Panel(
+        Text(text, style="bold cyan"),
+        border_style="cyan",
+        padding=(0, 2)
+    ))
+
+
+def styled_prompt(prompt_text: str, style: str = "yellow") -> str:
+    """Get user input with styled prompt."""
+    return console.input(f"[{style}]{prompt_text}[/{style}] ")
+
+
+def styled_info(text: str) -> None:
+    """Display info message matching logger.py INFO level."""
+    console.print(f"[cyan]ℹ[/cyan] {text}")
+
+
+def styled_warning(text: str) -> None:
+    """Display warning message matching logger.py WARNING level."""
+    console.print(f"[yellow]⚠[/yellow] {text}")
+
+
+def styled_error(text: str) -> None:
+    """Display error message matching logger.py ERROR level."""
+    console.print(f"[red]✗[/red] {text}")
+
+
+def styled_success(text: str) -> None:
+    """Display success message matching logger.py SUCCESS level."""
+    console.print(f"[green]✓[/green] {text}")
 
 
 def input_model_name():
     """Ask for model name and validate format."""
     while True:
-        name = input("Enter model name (contain only: letters, digits and underscore): ").strip()
+        name = styled_prompt("Enter model name (letters, digits, underscore only):")
         if not name:
-            print("Model name cannot be empty.")
+            styled_error("Model name cannot be empty.")
             continue
 
         if re.fullmatch(r"[A-Za-z0-9_]+", name):
             return name
 
-        print("Invalid model name. Use only letters, numbers, and underscore.")
+        styled_error("Invalid model name. Use only letters, numbers, and underscore.")
 
 
 def input_description():
     """Ask for an optional short description."""
-    return input("Enter short description (optional): ").strip()
+    return styled_prompt("Enter short description (optional):", style="cyan")
 
 
 def input_date(prompt):
     """Ask for a date in DD-MM-YYYY format and return a datetime object."""
     while True:
-        raw = input(f"{prompt} (DD-MM-YYYY): ").strip()
+        raw = styled_prompt(f"{prompt} (DD-MM-YYYY):")
         try:
             return datetime.strptime(raw, "%d-%m-%Y")
         except ValueError:
-            print("Invalid date format. Expected DD-MM-YYYY.")
+            styled_error("Invalid date format. Expected DD-MM-YYYY.")
 
 
 def create_run_folder(model_name):
@@ -75,7 +115,7 @@ def collect_model_and_run_path():
             run_path = create_run_folder(model_name)
             return model_name, run_path
         except FileExistsError as e:
-            print(f"\n{e}\n")
+            console.print(f"\n[red]{e}[/red]\n")
 
 
 def collect_training_date_range():
@@ -86,30 +126,34 @@ def collect_training_date_range():
         train_start_dt: datetime
         train_end_dt: datetime
     """
-    print("\nEnter TRAINING date range.")
-    print(f"The environment will automatically split this range into:")
-    print(f" - Training: {int(TRAIN_TEST_SPLIT * 100)}%")
-    print(f" - Testing : {int((1 - TRAIN_TEST_SPLIT) * 100)}%\n")
+    console.print()
+    styled_header("Enter TRAINING Date Range")
+    styled_info(f"The environment will automatically split this range into:")
+    console.print(f"  [cyan]•[/cyan] Training: [bold]{int(TRAIN_TEST_SPLIT * 100)}%[/bold]")
+    console.print(f"  [cyan]•[/cyan] Testing:  [bold]{int((1 - TRAIN_TEST_SPLIT) * 100)}%[/bold]")
+    console.print()
 
     while True:
         start_dt = input_date("Training start date")
         end_dt = input_date("Training end date")
 
         if start_dt >= end_dt:
-            print("Training start date must be earlier than end date.\n")
+            styled_error("Training start date must be earlier than end date.")
+            console.print()
             continue
 
         duration_days = (end_dt - start_dt).days
-        print(f"\n   Training period:")
-        print(f"   Start: {start_dt.strftime('%Y-%m-%d')}")
-        print(f"   End:   {end_dt.strftime('%Y-%m-%d')}")
-        print(f"   Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
+        console.print(f"\n[cyan]Training period:[/cyan]")
+        console.print(f"  Start:    {start_dt.strftime('%Y-%m-%d')}")
+        console.print(f"  End:      {end_dt.strftime('%Y-%m-%d')}")
+        console.print(f"  Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
 
-        confirm = input("   Is this correct? (yes/no): ").strip().lower()
-        if confirm in ("yes", "y"):
+        confirm = styled_prompt("Is this correct? (yes/no):", style="green")
+        if confirm.lower() in ("yes", "y"):
             return start_dt, end_dt
 
-        print("\n   Let's try again...\n")
+        styled_info("Let's try again...")
+        console.print()
 
 
 def collect_backtest_date_range(
@@ -125,15 +169,18 @@ def collect_backtest_date_range(
         bt_end_dt: datetime
         overlap: bool
     """
-    print("\nEnter BACKTEST date range.")
-    print("This range will be used ONLY for backtesting the model.\n")
+    console.print()
+    styled_header("Enter BACKTEST Date Range")
+    styled_info("This range will be used ONLY for backtesting the model.")
+    console.print()
 
     while True:
         bt_start_dt = input_date("Backtest start date")
         bt_end_dt = input_date("Backtest end date")
 
         if bt_start_dt >= bt_end_dt:
-            print("Backtest start date must be earlier than end date.\n")
+            styled_error("Backtest start date must be earlier than end date.")
+            console.print()
             continue
 
         overlap = False
@@ -141,27 +188,30 @@ def collect_backtest_date_range(
             overlap = not (bt_end_dt <= train_start_dt or bt_start_dt >= train_end_dt)
 
             if overlap:
-                print("\n[WARNING] Backtest date range OVERLAPS with training period!")
-                print(f"   Training: {train_start_dt.strftime('%Y-%m-%d')} → {train_end_dt.strftime('%Y-%m-%d')}")
-                print(f"   Backtest: {bt_start_dt.strftime('%Y-%m-%d')} → {bt_end_dt.strftime('%Y-%m-%d')}")
-                print("\nRunning backtest on overlapping data may cause data leakage.")
+                console.print()
+                styled_warning("[WARNING] Backtest date range OVERLAPS with training period!")
+                console.print(f"  Training: {train_start_dt.strftime('%Y-%m-%d')} → {train_end_dt.strftime('%Y-%m-%d')}")
+                console.print(f"  Backtest: {bt_start_dt.strftime('%Y-%m-%d')} → {bt_end_dt.strftime('%Y-%m-%d')}")
+                console.print("\n[yellow]⚠[/yellow] Running backtest on overlapping data may cause data leakage.\n")
 
-                proceed = input("\nDo you want to continue anyway? (yes/no): ").strip().lower()
-                if proceed not in ("yes", "y"):
-                    print("\n   Please enter backtest dates again.\n")
+                proceed = styled_prompt("Do you want to continue anyway? (yes/no):", style="yellow")
+                if proceed.lower() not in ("yes", "y"):
+                    styled_info("Please enter backtest dates again.")
+                    console.print()
                     continue
 
         duration_days = (bt_end_dt - bt_start_dt).days
-        print(f"\n   Backtest period:")
-        print(f"   Start: {bt_start_dt.strftime('%Y-%m-%d')}")
-        print(f"   End:   {bt_end_dt.strftime('%Y-%m-%d')}")
-        print(f"   Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
+        console.print(f"\n[cyan]Backtest period:[/cyan]")
+        console.print(f"  Start:    {bt_start_dt.strftime('%Y-%m-%d')}")
+        console.print(f"  End:      {bt_end_dt.strftime('%Y-%m-%d')}")
+        console.print(f"  Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
 
-        confirm = input("   Is this correct? (yes/no): ").strip().lower()
-        if confirm in ("yes", "y"):
+        confirm = styled_prompt("Is this correct? (yes/no):", style="green")
+        if confirm.lower() in ("yes", "y"):
             return bt_start_dt, bt_end_dt, overlap
 
-        print("\n   Let's try again...\n")
+        styled_info("Let's try again...")
+        console.print()
 
 
 def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
@@ -189,15 +239,17 @@ def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
             "Expected each run to contain metadata.json and elegantrl/act.pth."
         )
 
-    print("\nAvailable trained models:")
+    console.print()
+    styled_header("Available Trained Models")
     for idx, run in enumerate(valid_runs, 1):
-        print(f"{idx}. {run}")
+        console.print(f"  [cyan]{idx}.[/cyan] {run.name}")
 
     while True:
-        choice = input("\nSelect model by number: ").strip()
+        console.print()
+        choice = styled_prompt("Select model by number:")
 
         if not choice.isdigit() or not (1 <= int(choice) <= len(valid_runs)):
-            print("Invalid selection. Please enter a valid number.")
+            styled_error("Invalid selection. Please enter a valid number.")
             continue
 
         selected_run = valid_runs[int(choice) - 1]
@@ -218,10 +270,12 @@ def collect_run_mode() -> str:
     Returns:
         run_mode (str)
     """
-    print("Select execution mode:")
-    print("1 - Train new model and run backtest automatically")
-    print("2 - Train new model only")
-    print("3 - Run backtest on existing model\n")
+    console.print()
+    styled_header("Select Execution Mode")
+    console.print("  [cyan]1[/cyan] - Train new model and run backtest automatically")
+    console.print("  [cyan]2[/cyan] - Train new model only")
+    console.print("  [cyan]3[/cyan] - Run backtest on existing model")
+    console.print()
 
     valid_choices = {
         "1": "TRAIN_AND_BACKTEST",
@@ -230,11 +284,12 @@ def collect_run_mode() -> str:
     }
 
     while True:
-        choice = input("Enter choice (1/2/3): ").strip()
+        choice = styled_prompt("Enter choice (1/2/3):")
         if choice in valid_choices:
             return valid_choices[choice]
 
-        print("Invalid selection. Please enter 1, 2, or 3.\n")
+        styled_error("Invalid selection. Please enter 1, 2, or 3.")
+        console.print()
 
 
 def collect_train_and_backtest_input() -> tuple[Dict[str, Any], Dict[str, Any], Path]:
