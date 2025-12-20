@@ -25,5 +25,8 @@ tqdm>=4.65.0
 # Logging
 loguru>=0.7.0
 
+# User interface
+rich>=13.7.0
+
 # Add yfinance for real VIX data
 yfinance>=0.2.0
