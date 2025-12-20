@@ -38,10 +38,10 @@ class ProgressTracker:
 
 
 @contextmanager
-def safe_progress(total: int, desc: str, unit: str = "item") -> Iterator[Tuple[tqdm, Callable[[int], None]]]:
+def safe_progress(total: int, desc: str, unit: str = "item") -> Iterator[Callable[[int], None]]:
     """
     Context manager ensuring the progress bar reaches 100% and closes cleanly.
-    Yields: (pbar, update_fn)
+    Yields: update_fn (validated to prevent overflow)
     """
     pbar = tqdm(
         total=total,
@@ -51,8 +51,19 @@ def safe_progress(total: int, desc: str, unit: str = "item") -> Iterator[Tuple[t
         leave=False,
         dynamic_ncols=True,
     )
+
+    def safe_update(n: int):
+        """Update progress bar with overflow protection."""
+        if pbar.n + n > pbar.total:
+            # Prevent overflow - only update remaining amount
+            remaining = pbar.total - pbar.n
+            if remaining > 0:
+                pbar.update(remaining)
+        else:
+            pbar.update(n)
+
     try:
-        yield pbar, pbar.update
+        yield safe_update
     finally:
         remaining = total - pbar.n
         if remaining > 0:

@@ -206,7 +206,7 @@ class DataManager:
         trading_pair: str = None,
         base_timeframe: str = None,
         storage_path: str = None,
-        logger=None
+        logger=None  # Required parameter
     ):
         """
         Initialize DataManager.
@@ -217,16 +217,14 @@ class DataManager:
             base_timeframe: Base data timeframe (default: config.DATA_TIMEFRAME)
             storage_path: Root storage path (default: config.DATA_ROOT_PATH)
                          DEPRECATED - use config.DATA_ROOT_PATH instead
-            logger: Logger instance (optional, will create fallback if None)
+            logger: Logger instance (REQUIRED)
         """
-        # Store logger with safe fallback
-        if logger:
-            from utils.logger import LogComponent
-            self.logger = logger.for_component(LogComponent.DATA)
-        else:
-            # Fallback: create a minimal logger (no file output)
-            from utils.logger import RLLogger, LogComponent
-            self.logger = RLLogger(run_path=None, component=LogComponent.DATA).view()
+        # Logger is required - validate it's provided
+        if logger is None:
+            raise ValueError("logger parameter is required. Pass RLLogger instance from main.py")
+
+        from utils.logger import LogComponent
+        self.logger = logger.for_component(LogComponent.DATA)
 
         self.exchange = exchange or config.EXCHANGE_NAME
         self.trading_pair = trading_pair or config.TRADING_PAIR
@@ -351,7 +349,7 @@ class DataManager:
         archived_path = archived_dir / f"{timestamp}_{filepath.name}"
 
         shutil.move(str(filepath), str(archived_path))
-        print(f"[INFO] Archived: {filepath.name} → archived/{filepath.parent.name}/{archived_path.name}")
+        self.logger.info(f"Archived: {filepath.name} → archived/{filepath.parent.name}/{archived_path.name}")
 
     def _save_processed_data(self, df: pd.DataFrame, filepath: Path) -> None:
         """
@@ -366,7 +364,7 @@ class DataManager:
             self._archive_file(filepath)
 
         df.to_parquet(filepath, index=False)
-        print(f"[INFO] Saved processed data: {filepath}")
+        self.logger.info(f"Saved processed data: {filepath}")
 
     def _get_data_gap(
         self,
@@ -451,7 +449,7 @@ class DataManager:
                     ) from e
 
                 wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                print(f"  Retry {attempt+1}/{max_retries} in {wait_time}s...")
+                self.logger.warning(f"Retry {attempt+1}/{max_retries} in {wait_time}s...")
                 time.sleep(wait_time)
 
     def _save_raw_data(self, df: pd.DataFrame, filepath: Path) -> Path:
@@ -470,7 +468,7 @@ class DataManager:
         """
         try:
             df.to_parquet(filepath, index=False)
-            print(f"  Saved to: {filepath}")
+            self.logger.debug(f"Saved to: {filepath}")
             return filepath
         except Exception as e:
             raise StorageError(f"Failed to save data to {filepath}: {e}") from e
@@ -503,20 +501,20 @@ class DataManager:
 
         # Case 1: No existing data or force redownload
         if not filepath.exists() or force_redownload:
-            print(f"Downloading full range: {start_date} to {end_date}")
+            self.logger.info(f"Downloading full range: {start_date} to {end_date}")
             df = self._download_with_retry(start_date, end_date)
             self._save_raw_data(df, filepath)
             return df
 
         # Case 2: Incremental update
-        print(f"Checking existing data: {filepath}")
+        self.logger.info(f"Checking existing data: {filepath}")
 
         # OPTIMIZATION: Load only date column to check gaps
         try:
             existing_dates = pd.read_parquet(filepath, columns=['date'])
         except Exception as e:
-            print(f"  Warning: Failed to read existing data ({e})")
-            print(f"  Redownloading full range...")
+            self.logger.warning(f"Failed to read existing data ({e})")
+            self.logger.info("Redownloading full range...")
             df = self._download_with_retry(start_date, end_date)
             self._save_raw_data(df, filepath)
             return df
@@ -526,7 +524,7 @@ class DataManager:
 
         if not gaps:
             # No missing data - load full data and filter to requested range
-            print("  No missing data - using existing")
+            self.logger.info("No missing data - using existing")
             existing_df = pd.read_parquet(filepath)
             mask = (
                 (existing_df['date'] >= start_date) &
@@ -535,15 +533,15 @@ class DataManager:
             return existing_df[mask].reset_index(drop=True)
 
         # Download gaps
-        print(f"  Found {len(gaps)} gap(s) to download")
+        self.logger.info(f"Found {len(gaps)} gap(s) to download")
         gap_dfs = []
         for gap_start, gap_end in gaps:
-            print(f"    Gap: {gap_start} to {gap_end}")
+            self.logger.info(f"Gap: {gap_start} to {gap_end}")
             gap_df = self._download_with_retry(gap_start, gap_end)
 
             # Skip empty downloads (e.g., future dates)
             if len(gap_df) == 0:
-                print(f"    Warning: No data available for {gap_start} to {gap_end} (skipping)")
+                self.logger.warning(f"No data available for {gap_start} to {gap_end} (skipping)")
                 continue
 
             gap_dfs.append(gap_df)
@@ -552,7 +550,7 @@ class DataManager:
         existing_df = pd.read_parquet(filepath)
 
         # Merge and deduplicate
-        print("  Merging with existing data...")
+        self.logger.info("Merging with existing data...")
         combined = pd.concat([existing_df] + gap_dfs, ignore_index=True)
         combined = combined.drop_duplicates(subset=['date', 'tic'])
         combined = combined.sort_values('date').reset_index(drop=True)

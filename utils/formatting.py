@@ -10,9 +10,29 @@ from __future__ import annotations
 
 class Formatter:
     @staticmethod
-    def section_separator(title: str, width: int = 60) -> str:
+    def section_separator(title: str, width: int = None) -> str:
+        """Create a section separator with adaptive width."""
+        if width is None:
+            width = max(60, len(title) + 4)
         line = "=" * width
         return f"{line}\n{title}\n{line}"
+
+    @staticmethod
+    def duration_format(seconds: float) -> str:
+        """Format duration in human-readable form."""
+        if seconds < 60:
+            return f"{seconds:.2f}s"
+        elif seconds < 3600:
+            return f"{seconds/60:.1f}m"
+        else:
+            return f"{seconds/3600:.1f}h"
+
+    @staticmethod
+    def list_format(items: list, bullet: str = "•") -> str:
+        """Format list with bullets."""
+        if not items:
+            return "  None"
+        return "\n".join([f"  {bullet} {item}" for item in items])
 
     @staticmethod
     def error_context(error_msg: str, context: str | None = None) -> str:

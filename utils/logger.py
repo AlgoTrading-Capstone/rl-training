@@ -93,6 +93,8 @@ class RLLogger:
       to avoid handler duplication. Do not instantiate repeatedly in tight loops.
     """
 
+    VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "SUCCESS"}
+
     def __init__(
         self,
         run_path: Optional[str | Path] = None,
@@ -100,6 +102,12 @@ class RLLogger:
         file_log_level: str = "DEBUG",
         component: LogComponent = LogComponent.MAIN,
     ) -> None:
+        # Validate log levels
+        if log_level not in self.VALID_LOG_LEVELS:
+            raise ValueError(f"Invalid log_level: {log_level}. Must be one of {self.VALID_LOG_LEVELS}")
+        if file_log_level not in self.VALID_LOG_LEVELS:
+            raise ValueError(f"Invalid file_log_level: {file_log_level}. Must be one of {self.VALID_LOG_LEVELS}")
+
         # Prevent duplicate logs by removing ALL existing handlers.
         _logger.remove()
         self._handler_ids: list[int] = []
@@ -108,8 +116,7 @@ class RLLogger:
         self.log_level = log_level
         self.file_log_level = file_log_level
 
-        # Ensure a default component exists for any non-bound logs.
-        _logger.configure(extra={"component": component.value})
+        # Bind to component (no need for configure)
         self._bound = _logger.bind(component=component.value)
 
         self._setup_sinks()
@@ -227,5 +234,14 @@ class RLLogger:
             except ValueError:
                 pass
         self._handler_ids.clear()
+
+    def __enter__(self):
+        """Support context manager usage."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Cleanup on context manager exit."""
+        self.cleanup()
+        return False
 
 
