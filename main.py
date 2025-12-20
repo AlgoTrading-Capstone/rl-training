@@ -194,6 +194,9 @@ def run_backtest_pipeline(
         backtests_root.mkdir(exist_ok=True)
         backtest_dir.mkdir(exist_ok=False)
 
+        logger.info(f"Backtest ID: {backtest_id}")
+        logger.info(f"Output directory: {backtest_dir}")
+
     except Exception as e:
         error_msg = Formatter.error_context(
             f"ERROR CREATING BACKTEST DIRECTORY: {e}",
@@ -294,23 +297,22 @@ def run_backtest_pipeline(
             raise
 
 def main():
-    # Initialize temporary logger (before run_path is created)
-    temp_logger = RLLogger(run_path=None, log_level=config.LOG_LEVEL)
-    temp_logger.info("=" * 60)
-    temp_logger.info("RL Pipeline Execution")
-    temp_logger.info("=" * 60)
+    # Initialize active logger reference (before run_path is created)
+    active_logger = RLLogger(run_path=None, log_level=config.LOG_LEVEL)
+    active_logger.info("=" * 60)
+    active_logger.info("RL Pipeline Execution")
+    active_logger.info("=" * 60)
 
     # --------------------------------------------------------
     # STEP 0: Initialize shared DataManager
     # --------------------------------------------------------
-    # CRITICAL: Pass temp_logger HERE to prevent crash in later commits
     try:
-        temp_logger.info("Initializing DataManager")
+        active_logger.info("Initializing DataManager")
         manager = DataManager(
             exchange=config.EXCHANGE_NAME,
             trading_pair=config.TRADING_PAIR,
             base_timeframe=config.DATA_TIMEFRAME,
-            logger=temp_logger,
+            logger=active_logger,
         )
 
     except Exception as e:
@@ -318,7 +320,7 @@ def main():
             f"ERROR INITIALIZING DATA MANAGER: {e}",
             "Check config.py for valid exchange/pair/timeframe settings."
         )
-        temp_logger.exception(error_msg)
+        active_logger.exception(error_msg)
         return
 
     # --------------------------------------------------------
@@ -331,62 +333,65 @@ def main():
             metadata, backtest_config, run_path = collect_train_and_backtest_input()
 
             # Re-initialize logger with run_path for file logging
-            logger = RLLogger(
+            active_logger = RLLogger(
                 run_path=run_path,
                 log_level=config.LOG_LEVEL,
                 file_log_level=config.FILE_LOG_LEVEL,
                 component=LogComponent.MAIN
             )
 
+            # Update DataManager's logger to use the new file-logging instance
+            manager.logger = active_logger.for_component(LogComponent.DATA)
+
             # Display configuration
-            logger.info(Formatter.config_table(metadata))
+            active_logger.info(Formatter.config_table(metadata))
             create_metadata_file(metadata, run_path)
-            run_training_pipeline(metadata, run_path, manager, logger)
-            run_backtest_pipeline(backtest_config, run_path, manager, logger)
+            run_training_pipeline(metadata, run_path, manager, active_logger)
+            run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
 
         elif run_mode == "TRAIN_ONLY":
             metadata, run_path = collect_train_only_input()
 
             # Re-initialize logger with run_path for file logging
-            logger = RLLogger(
+            active_logger = RLLogger(
                 run_path=run_path,
                 log_level=config.LOG_LEVEL,
                 file_log_level=config.FILE_LOG_LEVEL,
                 component=LogComponent.MAIN
             )
 
+            # Update DataManager's logger to use the new file-logging instance
+            manager.logger = active_logger.for_component(LogComponent.DATA)
+
             # Display configuration
-            logger.info(Formatter.config_table(metadata))
+            active_logger.info(Formatter.config_table(metadata))
 
             create_metadata_file(metadata, run_path)
-            run_training_pipeline(metadata, run_path, manager, logger)
+            run_training_pipeline(metadata, run_path, manager, active_logger)
 
         elif run_mode == "BACKTEST_ONLY":
             backtest_config, run_path = collect_backtest_only_input()
 
             # Re-initialize logger with run_path for file logging
-            logger = RLLogger(
+            active_logger = RLLogger(
                 run_path=run_path,
                 log_level=config.LOG_LEVEL,
                 file_log_level=config.FILE_LOG_LEVEL,
                 component=LogComponent.MAIN
             )
 
-            run_backtest_pipeline(backtest_config, run_path, manager, logger)
+            # Update DataManager's logger to use the new file-logging instance
+            manager.logger = active_logger.for_component(LogComponent.DATA)
 
-        logger.success("\n=== Session Complete ===\n")
+            run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
+
+        active_logger.success("\n=== Session Complete ===\n")
 
     except KeyboardInterrupt:
-        if 'logger' in locals():
-            logger.warning("\nExecution interrupted by user.")
-        else:
-            temp_logger.warning("\nExecution interrupted by user.")
+        active_logger.warning("\nExecution interrupted by user.")
 
     except Exception:
-        if 'logger' in locals():
-            logger.error("\nPipeline failed. See detailed logs above.")
-        else:
-            temp_logger.error("\nPipeline failed. See detailed logs above.")
+        active_logger.error("\nPipeline failed. See detailed logs above.")
 
 
 if __name__ == "__main__":
