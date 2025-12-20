@@ -2,6 +2,7 @@
 Collect user input for RL training and backtesting runs.
 """
 
+import os
 from typing import Optional, Dict, Any
 import re
 from pathlib import Path
@@ -140,7 +141,7 @@ def collect_backtest_date_range(
             overlap = not (bt_end_dt <= train_start_dt or bt_start_dt >= train_end_dt)
 
             if overlap:
-                print("\n⚠ WARNING: Backtest date range OVERLAPS with training period!")
+                print("\n[WARNING] Backtest date range OVERLAPS with training period!")
                 print(f"   Training: {train_start_dt.strftime('%Y-%m-%d')} → {train_end_dt.strftime('%Y-%m-%d')}")
                 print(f"   Backtest: {bt_start_dt.strftime('%Y-%m-%d')} → {bt_end_dt.strftime('%Y-%m-%d')}")
                 print("\nRunning backtest on overlapping data may cause data leakage.")
