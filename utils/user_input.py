@@ -2,17 +2,19 @@
 Collect user input for RL training and backtesting runs.
 """
 
-import os
-from typing import Optional, Dict, Any
+from __future__ import annotations
+
 import re
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime
-import config
-from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
-from utils.metadata import load_metadata
+from typing import Optional, Dict, Any, Tuple
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+
+from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
+from utils.metadata import load_metadata
 
 # Initialize rich console for styled output
 console = Console()
@@ -23,7 +25,8 @@ def styled_header(text: str) -> None:
     console.print(Panel(
         Text(text, style="bold cyan"),
         border_style="cyan",
-        padding=(0, 2)
+        padding=(0, 2),
+        expand=False
     ))
 
 
@@ -52,7 +55,7 @@ def styled_success(text: str) -> None:
     console.print(f"[green]✓[/green] {text}")
 
 
-def input_model_name():
+def input_model_name() -> str:
     """Ask for model name and validate format."""
     while True:
         name = styled_prompt("Enter model name (letters, digits, underscore only):")
@@ -64,14 +67,14 @@ def input_model_name():
             return name
 
         styled_error("Invalid model name. Use only letters, numbers, and underscore.")
+    raise RuntimeError("Should be unreachable")
 
-
-def input_description():
+def input_description() -> str:
     """Ask for an optional short description."""
     return styled_prompt("Enter short description (optional):", style="cyan")
 
 
-def input_date(prompt):
+def input_date(prompt: str) -> datetime:
     """Ask for a date in DD-MM-YYYY format and return a datetime object."""
     while True:
         raw = styled_prompt(f"{prompt} (DD-MM-YYYY):")
@@ -81,7 +84,7 @@ def input_date(prompt):
             styled_error("Invalid date format. Expected DD-MM-YYYY.")
 
 
-def create_run_folder(model_name):
+def create_run_folder(model_name: str) -> Path:
     """
     Create a run folder based on model name and machine name.
 
@@ -89,25 +92,26 @@ def create_run_folder(model_name):
         FileExistsError: If the run folder already exists.
     """
     folder_name = f"{model_name}_{TRAINING_MACHINE_NAME}"
-    run_path = os.path.join(RESULTS_PATH, folder_name)
+    # Using pathlib for consistency
+    run_path = Path(RESULTS_PATH) / folder_name
 
-    if os.path.exists(run_path):
+    if run_path.exists():
         raise FileExistsError(
             f"A run with name '{folder_name}' already exists.\n"
             f"Please choose a different model name."
         )
 
-    os.makedirs(run_path)
+    run_path.mkdir(parents=True, exist_ok=True)
     return run_path
 
 
-def collect_model_and_run_path():
+def collect_model_and_run_path() -> Tuple[str, Path]:
     """
     Ask for model name and create a run folder (fail fast if it already exists).
 
     Returns:
         model_name: str
-        run_path: str
+        run_path: Path
     """
     while True:
         model_name = input_model_name()
@@ -118,7 +122,7 @@ def collect_model_and_run_path():
             console.print(f"\n[red]{e}[/red]\n")
 
 
-def collect_training_date_range():
+def collect_training_date_range() -> tuple[datetime, datetime]:
     """
     Collect and confirm training date range.
 
@@ -155,11 +159,12 @@ def collect_training_date_range():
         styled_info("Let's try again...")
         console.print()
 
+    raise RuntimeError("Should be unreachable")
 
 def collect_backtest_date_range(
     train_start_dt: Optional[datetime] = None,
     train_end_dt: Optional[datetime] = None,
-) -> tuple[datetime, datetime, bool]:
+) -> Tuple[datetime, datetime, bool]:
     """
     Collect and confirm backtest date range.
     Optionally checks overlap with a training range.
@@ -213,8 +218,10 @@ def collect_backtest_date_range(
         styled_info("Let's try again...")
         console.print()
 
+    raise RuntimeError("Should be unreachable")
 
-def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
+
+def select_existing_model_run() -> Tuple[Path, Dict[str, Any]]:
     """
     Let user select an existing trained model run that contains:
     - metadata.json
@@ -226,7 +233,12 @@ def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
     """
     valid_runs = []
 
-    for d in Path(RESULTS_PATH).iterdir():
+    results_dir = Path(RESULTS_PATH)
+    if not results_dir.exists():
+        styled_error(f"Results directory not found: {RESULTS_PATH}")
+        raise FileNotFoundError(f"Results directory not found: {RESULTS_PATH}")
+
+    for d in results_dir.iterdir():
         if not d.is_dir():
             continue
 
@@ -262,6 +274,8 @@ def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
 
         return run_path, metadata
 
+    raise RuntimeError("Should be unreachable")
+
 
 def collect_run_mode() -> str:
     """
@@ -292,7 +306,35 @@ def collect_run_mode() -> str:
         console.print()
 
 
-def collect_train_and_backtest_input() -> tuple[Dict[str, Any], Dict[str, Any], Path]:
+def _build_base_metadata(
+    model_name: str,
+    description: str,
+    run_path: Path,
+    train_start: datetime,
+    train_end: datetime
+) -> Dict[str, Any]:
+    """
+    Helper function to construct the common metadata dictionary.
+    This prevents code duplication between 'train_only' and 'train_and_backtest' modes.
+    """
+    # Use timezone-aware UTC time to fix the warning
+    current_time = datetime.now(timezone.utc).isoformat()
+
+    return {
+        "model_name": model_name,
+        "machine_name": TRAINING_MACHINE_NAME,
+        "description": description,
+        "created_at": current_time,
+        "results_path": str(run_path),
+        "training": {
+            "start_date": train_start.strftime("%d-%m-%Y"),
+            "end_date": train_end.strftime("%d-%m-%Y"),
+            "train_test_split": TRAIN_TEST_SPLIT,
+        },
+    }
+
+
+def collect_train_and_backtest_input() -> Tuple[Dict[str, Any], Dict[str, Any], Path]:
     """Collect metadata for RL training followed by backtesting."""
     model_name, run_path = collect_model_and_run_path()
     description = input_description()
@@ -303,18 +345,10 @@ def collect_train_and_backtest_input() -> tuple[Dict[str, Any], Dict[str, Any], 
         train_end_dt=train_end_dt
     )
 
-    metadata = {
-        "model_name": model_name,
-        "machine_name": TRAINING_MACHINE_NAME,
-        "description": description,
-        "created_at": datetime.utcnow().isoformat(),
-        "results_path": run_path,
-        "training": {
-            "start_date": train_start_dt.strftime("%d-%m-%Y"),
-            "end_date": train_end_dt.strftime("%d-%m-%Y"),
-            "train_test_split": TRAIN_TEST_SPLIT,
-        },
-    }
+    metadata = _build_base_metadata(
+        model_name, description, run_path, train_start_dt, train_end_dt
+    )
+    metadata["run_mode"] = "TRAIN_AND_BACKTEST"
 
     backtest_config = {
         "start_date": bt_start_dt.strftime("%d-%m-%Y"),
@@ -325,29 +359,21 @@ def collect_train_and_backtest_input() -> tuple[Dict[str, Any], Dict[str, Any], 
     return metadata, backtest_config, run_path
 
 
-def collect_train_only_input() -> tuple[Dict[str, Any], Path]:
+def collect_train_only_input() -> Tuple[Dict[str, Any], Path]:
     """Collect metadata for RL training only."""
     model_name, run_path = collect_model_and_run_path()
     description = input_description()
     train_start_dt, train_end_dt = collect_training_date_range()
 
-    metadata = {
-        "model_name": model_name,
-        "machine_name": TRAINING_MACHINE_NAME,
-        "description": description,
-        "created_at": datetime.utcnow().isoformat(),
-        "results_path": run_path,
-        "training": {
-            "start_date": train_start_dt.strftime("%d-%m-%Y"),
-            "end_date": train_end_dt.strftime("%d-%m-%Y"),
-            "train_test_split": TRAIN_TEST_SPLIT,
-        },
-    }
+    metadata = _build_base_metadata(
+        model_name, description, run_path, train_start_dt, train_end_dt
+    )
+    metadata["run_mode"] = "TRAIN_ONLY"
 
     return metadata, run_path
 
 
-def collect_backtest_only_input() -> tuple[Dict[str, Any], Path]:
+def collect_backtest_only_input() -> Tuple[Dict[str, Any], Path]:
     """Collect metadata for backtesting an existing trained model."""
     run_path, model_metadata = select_existing_model_run()
 
