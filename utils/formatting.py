@@ -5,7 +5,7 @@ Important: This module must not emit colors or log levels. The logger is respons
 for presentation; these helpers only return strings.
 """
 
-from __future__ import annotations
+from __future__ import annotations # For type hinting of str | None
 
 
 class Formatter:
@@ -67,7 +67,7 @@ class Formatter:
                 f"  Backtest: {metadata['backtest'].get('start_date', 'N/A')} to {metadata['backtest'].get('end_date', 'N/A')}",
             ])
 
-        # RL config (may be enriched later)
+        # RL config (maybe enriched later)
         rl_config = metadata.get('rl', {})
         lines.extend([
             "",
@@ -78,7 +78,7 @@ class Formatter:
             f"  Network Dims: {rl_config.get('net_dims', 'N/A')}",
         ])
 
-        # Strategies config (may be enriched later)
+        # Strategies config (maybe enriched later)
         strategies_config = metadata.get('strategies', {})
         strategy_list = strategies_config.get('strategy_list', [])
         lines.extend([

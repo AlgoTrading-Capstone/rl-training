@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from contextlib import contextmanager
-from typing import Callable, Iterator, Tuple
+from typing import Callable, Iterator
 
 from tqdm import tqdm
 
@@ -16,17 +16,19 @@ from tqdm import tqdm
 class ProgressTracker:
     @staticmethod
     def download_chunks(total: int, desc: str = "Downloading") -> tqdm:
+        """Create a tqdm progress bar for downloading chunks."""
         return tqdm(
-            total=total,
-            desc=desc,
-            unit="chunk",
-            file=sys.stderr,
-            leave=False,
-            dynamic_ncols=True,
+            total=total,# how many chunks to download
+            desc=desc, # description shown on progress bar
+            unit="chunk", # unit of measurement
+            file=sys.stderr, # output to stderr to avoid log conflicts
+            leave=False, # do not leave progress bar after completion
+            dynamic_ncols=True, # adapt width to terminal size
         )
 
     @staticmethod
     def process_items(total: int, desc: str = "Processing", unit: str = "item") -> tqdm:
+        """Create a tqdm progress bar for processing items."""
         return tqdm(
             total=total,
             desc=desc,
@@ -54,20 +56,20 @@ def safe_progress(total: int, desc: str, unit: str = "item") -> Iterator[Callabl
 
     def safe_update(n: int):
         """Update progress bar with overflow protection."""
-        if pbar.n + n > pbar.total:
+        if pbar.n + n > pbar.total: # check if the update would exceed total
             # Prevent overflow - only update remaining amount
-            remaining = pbar.total - pbar.n
-            if remaining > 0:
-                pbar.update(remaining)
+            needed = pbar.total - pbar.n # calculate remaining to reach total
+            if needed > 0:
+                pbar.update(needed)
         else:
             pbar.update(n)
 
     try:
         yield safe_update
-    finally:
-        remaining = total - pbar.n
-        if remaining > 0:
-            pbar.update(remaining)
+    finally: # ensure the progress bar is completed and closed
+        final_remainder = total - pbar.n
+        if final_remainder > 0:
+            pbar.update(final_remainder)
         pbar.close()
 
 
