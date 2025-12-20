@@ -17,11 +17,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
-
+from loguru import Record
+from typing import Iterator
 from loguru import logger as _logger
 
 
 class LogComponent(str, Enum):
+    """Logical components for log routing."""
+    # str values for loguru extra field
     MAIN = "MAIN"
     DATA = "DATA"
     STRATEGY = "STRATEGY"
@@ -29,10 +32,27 @@ class LogComponent(str, Enum):
     BACKTEST = "BACKTEST"
 
 
-def _component_filter(allowed: Iterable[str]) -> Callable[[dict], bool]:
+def _component_filter(allowed: Iterable[str]) -> Callable[[Record], bool]:
+    """
+    Factory function that creates a specialized filter for loguru sinks based on component names.
+
+    This function utilizes a Closure pattern to capture a specific set of allowed components
+    and returns a filter function that validates log records against this set. It is designed
+    to route logs to specific destinations (e.g., separating "DATA" logs from "TRAINING" logs).
+
+    Args:
+        allowed (Iterable[str]): A collection of component names (strings) that are permitted
+            by this filter. Example: `["DATA"]`.
+
+    Returns:
+        Callable[[dict], bool]: A filter predicate function compatible with loguru's `add()` method.
+            The returned function takes a log `record` (dict) and returns:
+            - `True`: If the record's component is present in the `allowed` set (log is kept).
+            - `False`: If the component is missing or not allowed (log is discarded).
+    """
     allowed_set = set(allowed)
 
-    def _filter(record: dict) -> bool:
+    def _filter(record: Record) -> bool:
         return record["extra"].get("component") in allowed_set
 
     return _filter
@@ -40,34 +60,85 @@ def _component_filter(allowed: Iterable[str]) -> Callable[[dict], bool]:
 
 @dataclass(frozen=True)
 class _LoggerView:
-    """A lightweight view over the globally-configured loguru logger."""
+    """A lightweight, immutable proxy wrapper around the configured loguru logger.
 
-    bound: Any
+    This class serves as a restricted view of the global logger, typically bound to specific
+    contextual information (like a specific component name). It enforces immutability to ensure
+    thread safety and predictable logging behavior.
+
+    It delegates standard logging calls (info, debug, error) to the underlying loguru instance
+    while providing additional utilities such as context managers for phase tracking.
+
+    Attributes:
+        bound (Any): The underlying loguru logger instance, potentially pre-bound with
+                     context variables (e.g., `logger.bind(component='DATA')`).
+"""
+
+    bound: Any # loguru logger bound instance
 
     def bind(self, **kwargs):
+        """
+                Creates a new LoggerView with additional context variables.
+
+                Since this class is immutable (frozen), this method does not modify the current instance.
+                Instead, it returns a new instance wrapping a new loguru logger with the added context.
+
+                Args:
+                    **kwargs: Arbitrary keyword arguments to bind to the log records (e.g., step=10).
+
+                Returns:
+                    _LoggerView: A new logger view instance with the updated context.
+                """
         return _LoggerView(self.bound.bind(**kwargs))
 
     def debug(self, msg: str) -> None:
+        """Log a message with severity 'DEBUG'."""
         self.bound.debug(msg)
 
     def info(self, msg: str) -> None:
+        """Log a message with severity 'INFO'."""
         self.bound.info(msg)
 
     def warning(self, msg: str) -> None:
+        """Log a message with severity 'WARNING'."""
         self.bound.warning(msg)
 
     def error(self, msg: str) -> None:
+        """Log a message with severity 'ERROR'."""
         self.bound.error(msg)
 
     def success(self, msg: str) -> None:
+        """Log a message with severity 'SUCCESS'."""
         self.bound.success(msg)
 
     def exception(self, msg: str) -> None:
+        """Log a message with severity 'ERROR' including the stack trace."""
         self.bound.exception(msg)
 
     @contextmanager
     def phase(self, name: str, phase_num: int, total_phases: int):
-        """Log phase start + duration, and always log SUCCESS/FAILED appropriately."""
+        """Context manager that encapsulates a distinct execution phase, providing automatic logging
+        for start, completion, and failure states with duration tracking.
+
+        This method wraps a block of code to ensure consistent logging lifecycle:
+        1. **Start:** Logs an INFO message with the phase name and index.
+        2. **Execution:** Measures the wall-clock time taken by the block.
+        3. **Failure:** If an exception occurs, logs an ERROR message with the elapsed time
+           and re-raises the exception.
+        4. **Success:** If the block completes without errors, logs a SUCCESS message with
+           the elapsed time.
+
+        Args:
+            name (str): The human-readable description of the phase (e.g., "Data Loading").
+            phase_num (int): The current step number (1-based index).
+            total_phases (int): The total number of planned phases in the workflow.
+
+        Yields:
+            None: Yields control back to the caller's context block.
+
+        Raises:
+            Exception: Any exception raised within the `with` block is caught, logged as a
+                       failure, and then re-raised to propagate the error upwards."""
         self.bound.info(f"[Phase {phase_num}/{total_phases}] {name}")
         start = time.time()
         failed = False
@@ -93,7 +164,7 @@ class RLLogger:
       to avoid handler duplication. Do not instantiate repeatedly in tight loops.
     """
 
-    VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "SUCCESS"}
+    VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "SUCCESS"}
 
     def __init__(
         self,
@@ -110,7 +181,7 @@ class RLLogger:
 
         # Prevent duplicate logs by removing ALL existing handlers.
         _logger.remove()
-        self._handler_ids: list[int] = []
+        self._handler_ids: list[int] = [] # Track only our own handlers
 
         self.run_path = Path(run_path) if run_path else None
         self.log_level = log_level
@@ -222,8 +293,8 @@ class RLLogger:
         self._bound.exception(msg)
 
     @contextmanager
-    def phase(self, name: str, phase_num: int, total_phases: int):
-        with self.view().phase(name, phase_num, total_phases):
+    def phase(self, name: str, phase_num: int, total_phases: int) -> Iterator[None]:
+        with self.view().phase(name=name, phase_num=phase_num, total_phases=total_phases):
             yield
 
     def cleanup(self) -> None:
