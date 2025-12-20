@@ -60,11 +60,8 @@ def run_training_pipeline(
                 f"ERROR DURING DATA PREPARATION: {e}",
                 f"Partial data may be available in: {config.DATA_ROOT_PATH}"
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
-
     # --------------------------------------------------------
     # STEP 3: Calculate state/action dimensions and split sizes
     # --------------------------------------------------------
@@ -97,9 +94,7 @@ def run_training_pipeline(
                 f"ERROR DURING DIMENSION CALCULATION: {e}",
                 "Training aborted during dimension calculation."
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
 
     # --------------------------------------------------------
@@ -129,9 +124,7 @@ def run_training_pipeline(
                 f"ERROR DURING RL CONFIG BUILD: {e}",
                 "Check rl_configs.py and config.py for invalid settings."
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
 
     # --------------------------------------------------------
@@ -153,9 +146,7 @@ def run_training_pipeline(
                 f"ERROR DURING TRAINING: {e}",
                 "Check logs and hyperparameters for instability."
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
 
 
@@ -208,9 +199,7 @@ def run_backtest_pipeline(
             f"ERROR CREATING BACKTEST DIRECTORY: {e}",
             "Backtest aborted during setup."
         )
-        logger.error(error_msg)
-        import traceback
-        traceback.print_exc()
+        logger.exception(error_msg)  # Logs error + traceback
         raise
 
     # --------------------------------------------------------
@@ -225,9 +214,7 @@ def run_backtest_pipeline(
             f"ERROR LOADING MODEL METADATA FOR BACKTEST: {e}",
             f"Expected metadata.json in: {run_path}"
         )
-        logger.error(error_msg)
-        import traceback
-        traceback.print_exc()
+        logger.exception(error_msg)  # Logs error + traceback
         raise
 
     # --------------------------------------------------------
@@ -250,9 +237,7 @@ def run_backtest_pipeline(
                 f"ERROR DURING BACKTEST DATA PREPARATION: {e}",
                 "Backtest aborted due to data processing failure."
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
 
     # --------------------------------------------------------
@@ -280,11 +265,8 @@ def run_backtest_pipeline(
                 f"ERROR DURING BACKTEST EXECUTION: {e}",
                 "Check model compatibility and data validity."
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
-
     # --------------------------------------------------------
     # STEP 10: Append backtest metadata
     # --------------------------------------------------------
@@ -308,11 +290,8 @@ def run_backtest_pipeline(
                 f"ERROR UPDATING BACKTEST METADATA: {e}",
                 f"Metadata file: {run_path / 'metadata.json'}"
             )
-            logger.error(error_msg)
-            import traceback
-            traceback.print_exc()
+            logger.exception(error_msg)  # Logs error + traceback
             raise
-
 
 def main():
     # Initialize temporary logger (before run_path is created)
@@ -339,9 +318,7 @@ def main():
             f"ERROR INITIALIZING DATA MANAGER: {e}",
             "Check config.py for valid exchange/pair/timeframe settings."
         )
-        temp_logger.error(error_msg)
-        import traceback
-        traceback.print_exc()
+        temp_logger.exception(error_msg)
         return
 
     # --------------------------------------------------------
