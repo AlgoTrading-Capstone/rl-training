@@ -16,10 +16,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
-from loguru import Record
-from typing import Iterator
+from typing import Any, Callable, Iterable, Optional, Iterator
 from loguru import logger as _logger
+
+# Loguru records are dicts with specific structure
+Record = dict[str, Any]
 
 
 class LogComponent(str, Enum):
