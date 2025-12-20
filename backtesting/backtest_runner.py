@@ -20,6 +20,7 @@ from trade_engine import compute_equity, close_position
 from backtesting.step_logger import StepLogger
 from backtesting.state_debug_logger import StateDebugLogger
 from backtesting.trade_tracker import TradeTracker
+from backtesting.metrics_manager import compute_and_write_metrics
 
 
 # ============================================================
@@ -382,6 +383,13 @@ def run_backtest(
 
     print(f"[INFO] Backtest completed. Results saved to: {out_dir}")
     print(f"[INFO] Artifacts: steps.csv, state_debug.csv, trades.csv, summary.json")
+
+    compute_and_write_metrics(
+        out_dir=out_dir,
+        model_metadata=model_metadata,
+    )
+
+    print(f"[INFO] Backtest metrics computed and saved.")
 
 
 # ============================================================

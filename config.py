@@ -96,8 +96,6 @@ TRADING_PAIR = "BTC/USDT"
 # 15-minute candles offer a strong balance between noise reduction and responsiveness for crypto RL tasks.
 DATA_TIMEFRAME = "15m"
 
-# Date range is now specified by user input (start_date and end_date)
-
 # List of technical indicators used by the environment.
 # These correspond to FinRL's BTC example and must remain in this order because normalization is index-based.
 INDICATORS = [
@@ -136,6 +134,10 @@ BACKTEST_DEVICE = "cpu"
 # False : keep mark-to-market valuation only (position may remain open in trades.csv)
 BACKTEST_FORCE_CLOSE = True
 
+# Annual risk-free rate (decimal) used for Sharpe/Sortino calculations.
+# In crypto markets it is common to set this to 0.0 due to the lack of a true risk-free benchmark.
+RISK_FREE_RATE = 0.0
+
 # Directory for saving training results, including: trained agent models, evaluation metrics, plots and cumulative return charts
 # Data will be stored per-run in: results/{model_name}_{machine_name}/data/
 RESULTS_PATH = "results"
@@ -143,6 +145,7 @@ RESULTS_PATH = "results"
 # Logging configuration
 # Console log level determines what appears in terminal output (INFO shows major milestones, DEBUG shows everything)
 LOG_LEVEL = "INFO"
+
 # File log level for detailed debugging (logs are saved to {run_path}/logs/)
 FILE_LOG_LEVEL = "DEBUG"
 
