@@ -2,12 +2,13 @@
 Collect user input for RL training and backtesting runs.
 """
 
+from typing import Optional, Dict, Any
 import re
-import os
-import json
+from pathlib import Path
 from datetime import datetime
 import config
 from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
+from utils.metadata import load_metadata
 
 
 def input_model_name():
@@ -110,7 +111,10 @@ def collect_training_date_range():
         print("\n   Let's try again...\n")
 
 
-def collect_backtest_date_range(train_start_dt=None, train_end_dt=None):
+def collect_backtest_date_range(
+    train_start_dt: Optional[datetime] = None,
+    train_end_dt: Optional[datetime] = None,
+) -> tuple[datetime, datetime, bool]:
     """
     Collect and confirm backtest date range.
     Optionally checks overlap with a training range.
@@ -159,27 +163,23 @@ def collect_backtest_date_range(train_start_dt=None, train_end_dt=None):
         print("\n   Let's try again...\n")
 
 
-def select_existing_model_run():
+def select_existing_model_run() -> tuple[Path, Dict[str, Any]]:
     """
     Let user select an existing trained model run that contains:
     - metadata.json
     - elegantrl/act.pth
 
     Returns:
-        model_run_path: str
+        model_run_path: Path
         model_metadata: dict
     """
     valid_runs = []
 
-    for d in os.listdir(RESULTS_PATH):
-        run_path = os.path.join(RESULTS_PATH, d)
-        if not os.path.isdir(run_path):
+    for d in Path(RESULTS_PATH).iterdir():
+        if not d.is_dir():
             continue
 
-        metadata_file = os.path.join(run_path, "metadata.json")
-        model_file = os.path.join(run_path, "elegantrl", "act.pth")
-
-        if os.path.exists(metadata_file) and os.path.exists(model_file):
+        if (d / "metadata.json").exists() and (d / "elegantrl" / "act.pth").exists():
             valid_runs.append(d)
 
     if not valid_runs:
@@ -200,10 +200,9 @@ def select_existing_model_run():
             continue
 
         selected_run = valid_runs[int(choice) - 1]
-        run_path = os.path.join(RESULTS_PATH, selected_run)
+        run_path = selected_run
 
-        with open(os.path.join(run_path, "metadata.json"), "r") as f:
-            metadata = json.load(f)
+        metadata = load_metadata(run_path)
 
         if "training" not in metadata:
             raise ValueError("Selected model metadata does not contain training information.")
@@ -211,32 +210,14 @@ def select_existing_model_run():
         return run_path, metadata
 
 
-def create_backtest_folder(model_run_path):
-    """
-    Create a new backtest folder inside an existing model run.
-
-    Returns:
-        backtest_path: str
-    """
-    backtests_root = os.path.join(model_run_path, "backtests")
-    os.makedirs(backtests_root, exist_ok=True)
-
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    backtest_path = os.path.join(backtests_root, f"bt_{timestamp}")
-    os.makedirs(backtest_path)
-
-    return backtest_path
-
-
-def collect_run_mode(logger=None):
+def collect_run_mode() -> str:
     """
     Ask user which execution mode to run.
 
     Returns:
         run_mode (str)
     """
-    # Interactive prompts use print() (not logger)
-    print("\nSelect execution mode:")
+    print("Select execution mode:")
     print("1 - Train new model and run backtest automatically")
     print("2 - Train new model only")
     print("3 - Run backtest on existing model\n")
@@ -255,7 +236,7 @@ def collect_run_mode(logger=None):
         print("Invalid selection. Please enter 1, 2, or 3.\n")
 
 
-def collect_train_and_backtest_input():
+def collect_train_and_backtest_input() -> tuple[Dict[str, Any], Dict[str, Any], Path]:
     """Collect metadata for RL training followed by backtesting."""
     model_name, run_path = collect_model_and_run_path()
     description = input_description()
@@ -270,7 +251,6 @@ def collect_train_and_backtest_input():
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
-        "mode": "TRAIN_AND_BACKTEST",
         "created_at": datetime.utcnow().isoformat(),
         "results_path": run_path,
         "training": {
@@ -278,27 +258,18 @@ def collect_train_and_backtest_input():
             "end_date": train_end_dt.strftime("%d-%m-%Y"),
             "train_test_split": TRAIN_TEST_SPLIT,
         },
-        "backtest": {
-            "start_date": bt_start_dt.strftime("%d-%m-%Y"),
-            "end_date": bt_end_dt.strftime("%d-%m-%Y"),
-            "overlaps_training": overlap,
-        },
-        "rl": {
-            "model": config.RL_MODEL,
-            "learning_rate": config.LEARNING_RATE,
-            "gamma": config.GAMMA,
-            "net_dims": config.NET_DIMS,
-        },
-        "strategies": {
-            "enabled": config.ENABLE_STRATEGIES,
-            "strategy_list": config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
-        },
     }
 
-    return metadata, run_path
+    backtest_config = {
+        "start_date": bt_start_dt.strftime("%d-%m-%Y"),
+        "end_date": bt_end_dt.strftime("%d-%m-%Y"),
+        "overlaps_training": overlap,
+    }
+
+    return metadata, backtest_config, run_path
 
 
-def collect_train_only_input():
+def collect_train_only_input() -> tuple[Dict[str, Any], Path]:
     """Collect metadata for RL training only."""
     model_name, run_path = collect_model_and_run_path()
     description = input_description()
@@ -308,7 +279,6 @@ def collect_train_only_input():
         "model_name": model_name,
         "machine_name": TRAINING_MACHINE_NAME,
         "description": description,
-        "mode": "TRAIN_ONLY",
         "created_at": datetime.utcnow().isoformat(),
         "results_path": run_path,
         "training": {
@@ -316,24 +286,14 @@ def collect_train_only_input():
             "end_date": train_end_dt.strftime("%d-%m-%Y"),
             "train_test_split": TRAIN_TEST_SPLIT,
         },
-        "rl": {
-            "model": config.RL_MODEL,
-            "learning_rate": config.LEARNING_RATE,
-            "gamma": config.GAMMA,
-            "net_dims": config.NET_DIMS,
-        },
-        "strategies": {
-            "enabled": config.ENABLE_STRATEGIES,
-            "strategy_list": config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
-        },
     }
 
     return metadata, run_path
 
 
-def collect_backtest_only_input():
+def collect_backtest_only_input() -> tuple[Dict[str, Any], Path]:
     """Collect metadata for backtesting an existing trained model."""
-    model_run_path, model_metadata = select_existing_model_run()
+    run_path, model_metadata = select_existing_model_run()
 
     train_meta = model_metadata["training"]
     train_start_dt = datetime.strptime(train_meta["start_date"], "%d-%m-%Y")
@@ -344,14 +304,10 @@ def collect_backtest_only_input():
         train_end_dt=train_end_dt
     )
 
-    backtest_path = create_backtest_folder(model_run_path)
-
-    metadata = {
-        "backtest": {
-            "start_date": bt_start_dt.strftime("%d-%m-%Y"),
-            "end_date": bt_end_dt.strftime("%d-%m-%Y"),
-            "overlaps_training": overlap,
-        },
+    backtest_config = {
+        "start_date": bt_start_dt.strftime("%d-%m-%Y"),
+        "end_date": bt_end_dt.strftime("%d-%m-%Y"),
+        "overlaps_training": overlap,
     }
 
-    return metadata, backtest_path
+    return backtest_config, run_path

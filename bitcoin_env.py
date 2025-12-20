@@ -322,9 +322,11 @@ class BitcoinTradingEnv:
             "step_idx": t,
             "timestamp": t_datetime,
             "stop_triggered": stop_triggered,
+            "stop_exec_price": None if stop_exec_price is None else float(stop_exec_price),
             "trade_executed": result.trade_executed,
             "effective_delta_btc": result.effective_delta_btc,
-            "equity": new_equity,
+            "equity": new_equity,                 # Portfolio total value (cash + holdings * equity_price) AFTER this step
+            "equity_price": float(equity_price),  # Price used to value holdings this step (close if no stop, else stop execution price)
         }
 
         return next_state, reward, done, info

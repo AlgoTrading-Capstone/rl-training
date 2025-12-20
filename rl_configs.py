@@ -2,7 +2,8 @@
 ElegantRL configuration builder.
 """
 
-import os
+from pathlib import Path
+
 from elegantrl.train.config import Config
 from elegantrl.agents import AgentPPO, AgentSAC
 from adapters.elegantrl_bitcoin_env import ElegantRLBitcoinEnv
@@ -66,7 +67,7 @@ def build_elegantrl_config(
     action_dim: int,
     train_max_step: int,
     eval_max_step: int,
-    run_path: str,
+    run_path: Path,
 ) -> Config:
     if RL_MODEL not in SUPPORTED_RL_MODELS:
         raise ValueError(f"Unsupported RL_MODEL='{RL_MODEL}'. Supported: {SUPPORTED_RL_MODELS}")
@@ -116,8 +117,9 @@ def build_elegantrl_config(
     )
 
     # Put ElegantRL outputs in a dedicated subfolder
-    erl_config.cwd = os.path.join(run_path, "elegantrl")
-    os.makedirs(erl_config.cwd, exist_ok=True)
+    erl_output_dir = run_path / "elegantrl"
+    erl_output_dir.mkdir(exist_ok=True)
+    erl_config.cwd = str(erl_output_dir)
 
     # IMPORTANT: never delete the run folder contents
     erl_config.if_remove = False
@@ -142,7 +144,12 @@ def build_elegantrl_config(
     erl_config.eval_per_step = int(2e4)
     erl_config.eval_times = 8
 
-    # Enrich metadata with full training config
-    enrich_metadata_with_training_config(run_path, algo_cfg)
+    # Enrich metadata with training + env interface (contract)
+    enrich_metadata_with_training_config(
+        run_path=run_path,
+        algorithm_config=algo_cfg,
+        state_dim=state_dim,
+        action_dim=action_dim,
+    )
 
     return erl_config

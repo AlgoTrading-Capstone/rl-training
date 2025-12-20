@@ -2,25 +2,35 @@
 Main orchestrator for RL training and backtesting pipeline.
 """
 
+from pathlib import Path
+from datetime import datetime
+
 import config
 from data.data_manager import DataManager
-from utils.user_input import (
-    collect_run_mode,
-    collect_train_and_backtest_input,
-    collect_train_only_input,
-    collect_backtest_only_input,
-)
+from utils.user_input import collect_run_mode, collect_train_and_backtest_input, collect_train_only_input, collect_backtest_only_input
 from rl_configs import build_elegantrl_config
 from elegantrl.train.run import train_agent
 from pathlib import Path
 from utils.metadata import create_metadata_file
 from utils.logger import RLLogger, LogComponent
 from utils.formatting import Formatter
+from utils.metadata import create_metadata_file, load_metadata, append_backtest_metadata
+from backtesting.backtest_runner import run_backtest
 
 
-def run_training_pipeline(metadata, run_path, manager, logger):
+def run_training_pipeline(
+    metadata: dict,
+    run_path: Path,
+    manager: DataManager,
+) -> None:
     """
     Execute the full RL training pipeline using ElegantRL.
+
+    Responsibilities:
+    - Load and clean training data
+    - Calculate state/action dimensions and split sizes
+    - Build ElegantRL training configuration
+    - Train and evaluate RL agent using ElegantRL
     """
 
     # --------------------------------------------------------
@@ -28,7 +38,7 @@ def run_training_pipeline(metadata, run_path, manager, logger):
     # --------------------------------------------------------
     with logger.phase("Data Preparation", 1, 5):
         try:
-            # Get processed arrays using smart incremental download
+            # Get strategy list from config
             strategy_list = config.STRATEGY_LIST if config.ENABLE_STRATEGIES else []
 
             # Extract training date range from metadata
@@ -150,43 +160,63 @@ def run_training_pipeline(metadata, run_path, manager, logger):
             raise
 
 
-def run_backtest_pipeline(metadata, run_path, manager, logger):
+def run_backtest_pipeline(
+    backtest_config: dict,
+    run_path: Path,
+    manager: DataManager,
+) -> None:
     """
-    Execute backtesting pipeline.
+    Execute a single backtest on an existing trained model.
+
+    Responsibilities:
+    - Create a unique backtest ID and output directory
+    - Load model metadata
+    - Load backtest data
+    - Invoke backtest_runner.run_backtest
+    - Append backtest entry to metadata.json
     """
 
     # --------------------------------------------------------
-    # STEP 6: Validate trained actor checkpoint exists
+    # STEP 6: Create backtest ID & output directory (fail-fast)
     # --------------------------------------------------------
-    model_run_path = Path(metadata.get("model_run_path", run_path))  # TODO
-    act_path = model_run_path / "elegantrl" / "act.pth"
+    try:
+        backtest_id = datetime.utcnow().strftime("bt_%Y%m%d_%H%M%S")
 
-    if not act_path.is_file():
-        raise FileNotFoundError(
-            f"Missing ElegantRL actor checkpoint: {act_path}\n"
-            f"Run mode: {metadata.get('mode')}\n"
-            f"Tip: Train first, or verify the ElegantRL output folder and checkpoint name."
-        )
+        backtests_root = run_path / "backtests"
+        backtest_dir = backtests_root / backtest_id
+
+        # Create directories
+        backtests_root.mkdir(exist_ok=True)
+        backtest_dir.mkdir(exist_ok=False)
 
     logger.info(f"Using actor checkpoint: {act_path}")
 
     # --------------------------------------------------------
-    # STEP 7: Load and clean backtest data
+    # STEP 7: Load model metadata
+    # --------------------------------------------------------
+    try:
+        model_metadata = load_metadata(run_path)
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR LOADING MODEL METADATA FOR BACKTEST: {e}")
+        print(f"{'=' * 60}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+    # --------------------------------------------------------
+    # STEP 8: Load backtest data
     # --------------------------------------------------------
     with logger.phase("Backtest Data Preparation", 1, 1):
         try:
             strategy_list = config.STRATEGY_LIST if config.ENABLE_STRATEGIES else []
 
-            bt_start = metadata["backtest"]["start_date"]
-            bt_end = metadata["backtest"]["end_date"]
-
-            logger.info(f"Loading data for backtest: {bt_start} to {bt_end}")
-
-            price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
-                start_date=bt_start,
-                end_date=bt_end,
-                strategy_list=strategy_list,
-            )
+        price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
+            start_date=backtest_config["start_date"],
+            end_date=backtest_config["end_date"],
+            strategy_list=strategy_list,
+        )
 
             logger.info(f"Loaded {price_array.shape[0]} timesteps for backtesting")
 
@@ -202,6 +232,63 @@ def run_backtest_pipeline(metadata, run_path, manager, logger):
             import traceback
             traceback.print_exc()
             raise
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR DURING BACKTEST DATA PREPARATION: {e}")
+        print(f"{'=' * 60}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+    # --------------------------------------------------------
+    # STEP 9: Run backtest
+    # --------------------------------------------------------
+    try:
+        print("[INFO] Running backtest...")
+
+        run_backtest(
+            model_metadata=model_metadata,
+            act_path=run_path / "elegantrl" / "act.pth",
+            price_array=price_array,
+            tech_array=tech_array,
+            turbulence_array=turbulence_array,
+            signal_array=signal_array,
+            datetime_array=datetime_array,
+            out_dir=backtest_dir,
+        )
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR DURING BACKTEST EXECUTION: {e}")
+        print(f"{'=' * 60}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+    # --------------------------------------------------------
+    # STEP 10: Append backtest metadata
+    # --------------------------------------------------------
+    try:
+        backtest_entry = {
+            "id": backtest_id,
+            "created_at": datetime.utcnow().isoformat(),
+            "start_date": backtest_config["start_date"],
+            "end_date": backtest_config["end_date"],
+            "overlaps_training": backtest_config["overlaps_training"],
+            "output_dir": f"backtests/{backtest_id}",
+        }
+
+        append_backtest_metadata(run_path, backtest_entry)
+
+        print("[INFO] Backtest completed and metadata updated.\n")
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR UPDATING BACKTEST METADATA: {e}")
+        print(f"{'=' * 60}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def main():
@@ -221,15 +308,29 @@ def main():
         base_timeframe=config.DATA_TIMEFRAME,
         logger=temp_logger,
     )
+    try:
+        manager = DataManager(
+            exchange=config.EXCHANGE_NAME,
+            trading_pair=config.TRADING_PAIR,
+            base_timeframe=config.DATA_TIMEFRAME,
+        )
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"ERROR INITIALIZING DATA MANAGER: {e}")
+        print(f"{'=' * 60}")
+        import traceback
+        traceback.print_exc()
+        return
 
     # --------------------------------------------------------
     # STEP 1: Determine run mode and collect user input
     # --------------------------------------------------------
-    run_mode = collect_run_mode(logger=temp_logger)
-
     try:
+        run_mode = collect_run_mode(logger=temp_logger)
+
         if run_mode == "TRAIN_AND_BACKTEST":
-            metadata, run_path = collect_train_and_backtest_input()
+            metadata, backtest_config, run_path = collect_train_and_backtest_input()
 
             # Re-initialize logger with run_path for file logging
             logger = RLLogger(
@@ -241,10 +342,9 @@ def main():
 
             # Display configuration
             logger.info(Formatter.config_table(metadata))
-
             create_metadata_file(metadata, run_path)
             run_training_pipeline(metadata, run_path, manager, logger)
-            run_backtest_pipeline(metadata, run_path, manager, logger)
+            run_backtest_pipeline(backtest_config, run_path, manager, logger)
 
         elif run_mode == "TRAIN_ONLY":
             metadata, run_path = collect_train_only_input()
@@ -273,6 +373,8 @@ def main():
                 file_log_level=config.FILE_LOG_LEVEL,
                 component=LogComponent.MAIN
             )
+            backtest_config, run_path = collect_backtest_only_input()
+            run_backtest_pipeline(backtest_config, run_path, manager)
 
             run_backtest_pipeline(metadata, run_path, manager, logger)
 

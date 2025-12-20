@@ -123,6 +123,19 @@ SLIPPAGE_MEAN = 0.0001
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"
 
+# Device for running backtests.
+# Options:
+# "cpu"        - Recommended default (stable, deterministic).
+# "cuda"       - Use default GPU (cuda:0) if available.
+# "cuda:<id>"  - Use a specific GPU (e.g., "cuda:1").
+BACKTEST_DEVICE = "cpu"
+
+# Force-close any open position at the final candle of backtests.
+# Options:
+# True  : realize PnL + fees/slippage and close the last trade in trades.csv
+# False : keep mark-to-market valuation only (position may remain open in trades.csv)
+BACKTEST_FORCE_CLOSE = True
+
 # Directory for saving training results, including: trained agent models, evaluation metrics, plots and cumulative return charts
 # Data will be stored per-run in: results/{model_name}_{machine_name}/data/
 RESULTS_PATH = "results"

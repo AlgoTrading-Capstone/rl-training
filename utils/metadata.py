@@ -21,7 +21,7 @@ import config
 
 def create_metadata_file(
         metadata: Dict[str, Any],
-        run_path: str | Path,
+        run_path: Path,
 ) -> Path:
     """
     Create metadata.json from user-provided metadata.
@@ -37,7 +37,6 @@ def create_metadata_file(
     Raises:
         RuntimeError: If file cannot be written
     """
-    run_path = Path(run_path)
     metadata_file = run_path / "metadata.json"
 
     try:
@@ -53,8 +52,11 @@ def create_metadata_file(
 
 
 def enrich_metadata_with_training_config(
-    run_path: str | Path,
+    run_path: Path,
     algorithm_config: Dict[str, Any],
+    *,
+    state_dim: int,
+    action_dim: int,
 ) -> None:
     """
     Enrich existing metadata.json with a full training configuration snapshot.
@@ -63,11 +65,12 @@ def enrich_metadata_with_training_config(
     Args:
         run_path: Root run directory
         algorithm_config: Algorithm-specific config (from rl_configs.py)
+        state_dim: Environment state dimension
+        action_dim: Environment action dimension
 
     Raises:
         RuntimeError: If metadata.json cannot be updated
     """
-    run_path = Path(run_path)
     metadata_file = run_path / "metadata.json"
 
     metadata = _load_metadata(metadata_file)
@@ -83,6 +86,14 @@ def enrich_metadata_with_training_config(
         "total_training_steps": config.TOTAL_TRAINING_STEPS,
         "seed": config.SEED,
         "algorithm_params": algorithm_config,
+    }
+
+    # ------------------------------------------------------------
+    # Environment interface (model contract)
+    # ------------------------------------------------------------
+    metadata["env_spec"] = {
+        "state_dim": int(state_dim),
+        "action_dim": int(action_dim),
     }
 
     # ------------------------------------------------------------
@@ -112,7 +123,6 @@ def enrich_metadata_with_training_config(
         "enable_turbulence": config.ENABLE_TURBULENCE,
         "enable_vix": config.ENABLE_VIX,
         "vix_symbol": getattr(config, "VIX_SYMBOL", None),
-        "train_test_split": config.TRAIN_TEST_SPLIT,
     }
 
     # ------------------------------------------------------------
@@ -127,7 +137,7 @@ def enrich_metadata_with_training_config(
     print("[INFO] Metadata enriched with training configuration")
 
 
-def load_metadata(run_path: str | Path) -> Dict[str, Any]:
+def load_metadata(run_path: Path) -> Dict[str, Any]:
     """
     Load metadata.json from a run directory.
 
@@ -139,6 +149,22 @@ def load_metadata(run_path: str | Path) -> Dict[str, Any]:
     """
     metadata_file = Path(run_path) / "metadata.json"
     return _load_metadata(metadata_file)
+
+
+def append_backtest_metadata(run_path: Path, backtest_entry: dict) -> None:
+    """
+    Append a backtest entry to metadata.json.
+
+    Args:
+        run_path: Root run directory
+        backtest_entry: Backtest metadata entry to append
+    """
+    metadata = load_metadata(run_path)
+
+    metadata.setdefault("backtests", [])
+    metadata["backtests"].append(backtest_entry)
+
+    _save_metadata(run_path / "metadata.json", metadata)
 
 
 # ============================================================================
