@@ -113,29 +113,22 @@ INDICATORS = [
 ENABLE_TURBULENCE = True
 
 # -----------------------------------------------------------
-# External Assets Registry (Hybrid Data)
+# External Assets Registry (Daily Upsampling Strategy)
 # -----------------------------------------------------------
-# A list of external financial assets to merge with crypto data.
-# Each asset defines its source, storage location, and sync rules.
 EXTERNAL_ASSETS = [
     {
-        "enabled": True,  # Master switch for this asset
-        "ticker": "^VIX",  # Yahoo Finance symbol
-        "col_name": "vix",  # Column name in final DataFrame
+        "enabled": True,
+        "ticker": "^VIX",
+        "col_name": "vix",
 
-        # 'hybrid' mode: Stitches local CSV (history) with Yahoo API (live)
-        "source": "hybrid",
+        # Source is now direct API, not hybrid
+        "source": "yfinance",
 
-        # Location where the historical CSV will be stored/loaded from
-        "local_path": "data/download_data/external/vix_15m_history.csv",
+        # We fetch DAILY data (stable), but map it to DATA_TIMEFRAME (15m)
+        "source_interval": "1d",
 
-        # Backup URL for auto-downloading the history file if missing
-        # (Replace with your actual GitHub Release link when ready)
-        "download_url": "https://github.com/YourUser/YourRepo/releases/download/v1.0/vix_15m_history.csv",
-
-        # Dynamic reference to the global setting
-        # This ensures the external asset always matches the system's heartbeat
-        "interval": DATA_TIMEFRAME
+        # Local cache file (saved in the folder you created)
+        "local_path": "data/download_data/external/vix_daily_cache.csv",
     }
 ]
 

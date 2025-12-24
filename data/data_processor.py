@@ -11,8 +11,10 @@ import pandas as pd
 import talib
 from datetime import datetime
 import config
+import yfinance as yf
 from utils.progress import ProgressTracker
-
+from data.external_manager import ExternalDataManager
+from utils.logger import RLLogger
 
 class CcxtProcessor:
     """
@@ -388,54 +390,65 @@ class CcxtProcessor:
         print(f"\n  Downloading real VIX ({config.VIX_SYMBOL})...")
 
         try:
-            import yfinance as yf
+
 
             # Get date range from our data
-            start_date = df['date'].min()
-            end_date = df['date'].max()
+            btc_start = df['date'].min()
+            btc_end = df['date'].max()
 
-            print(f"  Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            print(f"  Date range: {btc_start.strftime('%Y-%m-%d')} to {btc_end.strftime('%Y-%m-%d')}")
 
             # Download VIX data
             # IMPORTANT: yfinance end parameter is EXCLUSIVE, so add 1 day
-            end_date_exclusive = end_date + pd.Timedelta(days=1)
-
-            vix_data = yf.download(
+            buffer_start_date = btc_start - pd.Timedelta(days=30) #Add 30-day buffer to start date to ensure coverage
+            end_date_exclusive = btc_end + pd.Timedelta(days=1) #pd.Timedelta creates a time delta object representing a duration, in this case, 1 day.
+            vix_raw = yf.download(
                 config.VIX_SYMBOL,
-                start=start_date.strftime('%Y-%m-%d'),
+                start=buffer_start_date.strftime('%Y-%m-%d'),
                 end=end_date_exclusive.strftime('%Y-%m-%d'),
-                progress=False,
-                auto_adjust=True  # Explicitly set to avoid warning
+                progress=False, # Disable yfinance progress bar
+                auto_adjust=True,  # Explicitly set to avoid warning
+                multi_level_index=False # Get single-level columns without MultiIndex tables that are the default in recent yfinance versions
             )
 
-            if vix_data.empty:
+            if vix_raw.empty:
                 raise ValueError("No VIX data returned from Yahoo Finance")
 
-            # Handle MultiIndex columns (yfinance recent versions)
-            if isinstance(vix_data.columns, pd.MultiIndex):
-                vix_data.columns = vix_data.columns.get_level_values(0)
+            # Prepare VIX DataFrame
+            vix_df = pd.DataFrame({'vix': vix_raw['Close']})
+            vix_df.index = pd.to_datetime(vix_df.index) #Ensure index is datetime
 
-            # Prepare VIX data for merge
-            vix_df = pd.DataFrame({
-                'date': vix_data.index,
-                'vix': vix_data['Close'].values
-            })
+            #this insures that we have a row for every day in the range even weekends/holidays also we use ffill to fill missing values and prevent look ahead bias
+            vix_full_calendar = vix_df.resample('D').ffill() # D is for day frequency, resample is like groupby for time series data
 
-            # Convert to datetime
-            vix_df['date'] = pd.to_datetime(vix_df['date'])
-            df['date'] = pd.to_datetime(df['date'])
+            # -----------------------------------------------------------
+            # Prepare Merge Keys (Date Alignment Strategy)
+            # -----------------------------------------------------------
 
-            # VIX is daily, Bitcoin is 15-minute candles
-            # Match by date only (not time)
+            # Extract distinct calendar date from Bitcoin intraday timestamps
+            # This serves as the common key for merging daily VIX data with intraday crypto candles.
             df['date_only'] = df['date'].dt.date
 
-            # Shift VIX dates forward by 1 day so VIX from day N is applied to day N+1
-            # This prevents look-ahead bias (candles on day N use VIX from N-1 close)
-            vix_df['date_only'] = (pd.to_datetime(vix_df['date']) + pd.Timedelta(days=1)).dt.date
+            # Process VIX dates with a 1-day lag to prevent Look-ahead Bias:
+            # 1. Take the VIX index date (Publication Date).
+            # 2. Add 1 day to shift it to the "Actionable Date".
+            #    Reason: VIX closing value of Day N is only available AFTER market close,
+            #    so it should logically apply to trading decisions made on Day N+1.
+            # 3. Extract just the date component for merging.
+            vix_full_calendar['date_only'] = (vix_full_calendar.index + pd.Timedelta(days=1)).date
 
-            # Merge VIX data
+            # -----------------------------------------------------------
+            # Merge VIX Data
+            # -----------------------------------------------------------
+            # Performs a LEFT JOIN to map daily VIX values to intraday Bitcoin candles.
+            # Key behaviors:
+            # 1. Broadcasting: The single daily VIX value (e.g., from yesterday's close)
+            #    is replicated for every 15-minute candle of the current day.
+            # 2. Integrity: Uses 'left' join to strictly preserve the Bitcoin timeline.
+            #    If VIX data is missing for a date, rows are NOT dropped;
+            #    instead, the 'vix' column is filled with NaN (handled later)
             df = df.merge(
-                vix_df[['date_only', 'vix']],
+                vix_full_calendar[['date_only', 'vix']],
                 on='date_only',
                 how='left'
             )
@@ -449,45 +462,25 @@ class CcxtProcessor:
                     vix_val = row['vix'] if pd.notna(row['vix']) else 'NaN'
                     print(f"    {row['date'].strftime('%Y-%m-%d %H:%M')} → VIX={vix_val}")
 
-            # Backward fill FIRST - handles case where VIX starts after Bitcoin data
-            df['vix'] = df['vix'].bfill()
-
-            # Forward fill SECOND - propagates VIX through weekends/holidays
-            df['vix'] = df['vix'].ffill()
-
-            # Drop temporary column
+            #delete temporary merge key
             df = df.drop('date_only', axis=1)
 
-            # Statistics and validation
-            vix_coverage = (df['vix'].notna().sum() / len(df)) * 100
-            avg_vix = df['vix'].mean()
-            max_vix = df['vix'].max()
-            min_vix = df['vix'].min()
+            raw_valid_count = df['vix'].notna().sum()
+            if raw_valid_count == 0:
+                raise ValueError("CRITICAL: VIX download failed completely (0% coverage). Stopping.")
 
-            print(f"   Real VIX added")
-            print(f"   Coverage: {vix_coverage:.1f}%")
-            print(f"   Average VIX: {avg_vix:.2f}")
-            print(f"   Range: {min_vix:.2f} - {max_vix:.2f}")
+            # -----------------------------------------------------------
+            # Strict Filling Strategy (Prevent Look-Ahead Bias)
+            # -----------------------------------------------------------
+            # 1. Forward Fill (Primary): Propagates the last known VIX value forward.
+            #    This simulates real-time trading: on weekends/holidays, the agent
+            #    sees the value from the last market close. This preserves causality.
+            df['vix'] = df['vix'].ffill()
 
-            # Moderate validation: warn < 95%, error < 50%
-            if vix_coverage < 95.0:
-                print(f"  ⚠️  WARNING: VIX coverage is {vix_coverage:.1f}% (< 95%)")
-                print(f"      Some Bitcoin candles may have interpolated VIX data")
-
-            if vix_coverage < 50.0:
-                raise ValueError(
-                    f"VIX coverage critically low ({vix_coverage:.1f}%). "
-                    f"Check date range alignment with VIX availability."
-                )
-
-            # Final check: ensure NO NaNs remain after fill operations
-            if df['vix'].isna().any():
-                nan_count = df['vix'].isna().sum()
-                raise ValueError(
-                    f"VIX column contains {nan_count} NaN values after fill operations. "
-                    f"VIX data may be completely unavailable for your date range."
-                )
-
+            # 2. Backward Fill (Fallback): Handles ONLY the initial rows.
+            #    If the dataset starts on a date where VIX is missing (and no past exists),
+            #    we backfill from the first valid future observation to prevent NaNs.
+            df['vix'] = df['vix'].bfill()
             return df
 
         except ImportError:
@@ -597,7 +590,8 @@ class DataProcessor:
         self.data_source = data_source or config.EXCHANGE_NAME
         self.processor = CcxtProcessor(self.data_source)
         self.tech_indicator_list = tech_indicator or config.INDICATORS
-        self.vix = vix if vix is not None else False
+        logger = RLLogger("DataProcessor")
+        self.external_manager = ExternalDataManager(config.EXTERNAL_ASSETS, logger)
 
     def download_data(
             self,
@@ -627,7 +621,15 @@ class DataProcessor:
         return self.processor.add_turbulence(df)
 
     def add_vix(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add VIX proxy"""
+        """Add VIX data using the new ExternalDataManager."""
+        try:
+            df = self.external_manager.enrich_data(df) #Use the ExternalDataManager to add VIX data
+            return df
+        except Exception as e:
+            print(f"CRITICAL ERROR adding VIX: {e}")
+            return df
+
+
         return self.processor.add_vix(df)
 
     def df_to_array(
