@@ -66,26 +66,27 @@ class ExternalDataManager:
             return main_df
 
         # -----------------------------------------------------------
-        # [STEP 1] Prevent Lookahead Bias (Shift)
+        # [STEP 1] Fill Calendar Gaps
         # -----------------------------------------------------------
-        # Important: We shift the daily data by 1 day to ensure that the value
-        # used for any intraday candle is the last known value from the previous day.
-        self.logger.debug(f"Applying 1-day shift to {ticker} to prevent lookahead bias")
+        self.logger.debug(f"Resampling {ticker} to full calendar days...")
+        daily_df = daily_df.resample('D').ffill()
+
+        # -----------------------------------------------------------
+        # [STEP 2] Prevent Lookahead Bias (Shift)
+        # -----------------------------------------------------------
+        self.logger.debug(f"Applying 1-day shift to {ticker}...")
         daily_df['price'] = daily_df['price'].shift(1)
 
         # -----------------------------------------------------------
-        # [STEP 2] The "Last Known Value" Logic (Smart Fill)
+        # [STEP 3] Upsampling Logic
         # -----------------------------------------------------------
         self.logger.debug(f"Broadcasting daily {ticker} to intraday timeframe...")
-
-
-        # reindex with forward fill to align with main_df's index
         aligned_series = daily_df['price'].reindex(main_df.index, method='ffill')
 
 
 
         #-----------------------------------------------------------
-        # [STEP 3] Insert into Main DataFrame
+        # [STEP 4] Insert into Main DataFrame
         #-----------------------------------------------------------
         main_df[col_name] = aligned_series
 

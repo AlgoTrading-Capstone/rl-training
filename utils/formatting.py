@@ -7,6 +7,8 @@ for presentation; these helpers only return strings.
 
 from __future__ import annotations # For type hinting of str | None
 
+import config
+
 
 class Formatter:
     @staticmethod
@@ -41,8 +43,15 @@ class Formatter:
         return error_msg
 
     @staticmethod
-    def config_table(metadata: dict) -> str:
-        """Returns plain text configuration table for training runs."""
+    def display_training_config(metadata: dict, logger) -> None:
+        """
+        Display training configuration by combining metadata with current config.py values.
+        This avoids showing 'N/A' for RL settings that haven't been enriched yet.
+        
+        Args:
+            metadata: User-provided metadata (model name, dates, description)
+            logger: Logger instance for output
+        """
         lines = [
             "",
             "=" * 60,
@@ -52,44 +61,36 @@ class Formatter:
             "MODEL DETAILS:",
             f"  Name: {metadata.get('model_name', 'N/A')}",
             f"  Description: {metadata.get('description', 'N/A') or 'None'}",
-            f"  Mode: {metadata.get('mode', 'N/A')}",
+            f"  Mode: {metadata.get('run_mode', 'N/A')}",
             "",
             "DATE RANGES:",
         ]
-
+        
         if "training" in metadata:
-            lines.extend([
-                f"  Training: {metadata['training'].get('start_date', 'N/A')} to {metadata['training'].get('end_date', 'N/A')}",
-            ])
-
+            train = metadata["training"]
+            lines.append(f"  Training: {train.get('start_date', 'N/A')} to {train.get('end_date', 'N/A')}")
+        
         if "backtest" in metadata:
-            lines.extend([
-                f"  Backtest: {metadata['backtest'].get('start_date', 'N/A')} to {metadata['backtest'].get('end_date', 'N/A')}",
-            ])
-
-        # RL config (maybe enriched later)
-        rl_config = metadata.get('rl', {})
+            bt = metadata["backtest"]
+            lines.append(f"  Backtest: {bt.get('start_date', 'N/A')} to {bt.get('end_date', 'N/A')}")
+        
+        # Read from config.py directly (not from metadata which isn't enriched yet)
         lines.extend([
             "",
             "RL CONFIGURATION:",
-            f"  Algorithm: {rl_config.get('model', 'N/A')}",
-            f"  Learning Rate: {rl_config.get('learning_rate', 'N/A')}",
-            f"  Gamma: {rl_config.get('gamma', 'N/A')}",
-            f"  Network Dims: {rl_config.get('net_dims', 'N/A')}",
-        ])
-
-        # Strategies config (maybe enriched later)
-        strategies_config = metadata.get('strategies', {})
-        strategy_list = strategies_config.get('strategy_list', [])
-        lines.extend([
+            f"  Algorithm: {config.RL_MODEL}",
+            f"  Learning Rate: {config.LEARNING_RATE}",
+            f"  Gamma: {config.GAMMA}",
+            f"  Network Dims: {config.NET_DIMS}",
             "",
             "STRATEGIES:",
-            f"  Enabled: {strategies_config.get('enabled', 'N/A')}",
-            f"  List: {', '.join(strategy_list) if strategy_list else 'None'}",
+            f"  Enabled: {config.ENABLE_STRATEGIES}",
+            f"  List: {', '.join(config.STRATEGY_LIST) if config.ENABLE_STRATEGIES and config.STRATEGY_LIST else 'None'}",
             "",
             "=" * 60,
         ])
+        
+        logger.info("\n".join(lines))
 
-        return "\n".join(lines)
 
 

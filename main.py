@@ -344,7 +344,7 @@ def main():
             manager.logger = active_logger.for_component(LogComponent.DATA)
 
             # Display configuration
-            active_logger.info(Formatter.config_table(metadata))
+            Formatter.display_training_config(metadata, active_logger)
             create_metadata_file(metadata, run_path)
             run_training_pipeline(metadata, run_path, manager, active_logger)
             run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
@@ -364,7 +364,7 @@ def main():
             manager.logger = active_logger.for_component(LogComponent.DATA)
 
             # Display configuration
-            active_logger.info(Formatter.config_table(metadata))
+            Formatter.display_training_config(metadata, active_logger)
 
             create_metadata_file(metadata, run_path)
             run_training_pipeline(metadata, run_path, manager, active_logger)

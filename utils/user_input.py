@@ -370,6 +370,7 @@ def collect_train_only_input() -> Tuple[Dict[str, Any], Path]:
     )
     metadata["run_mode"] = "TRAIN_ONLY"
 
+
     return metadata, run_path
 
 
