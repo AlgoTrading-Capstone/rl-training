@@ -93,6 +93,7 @@ EXCHANGE_NAME = "binance"
 TRADING_PAIR = "BTC/USDT"
 
 # Candle timeframe to fetch from the exchange.
+#Defines the resolution for both Crypto and External data.
 # 15-minute candles offer a strong balance between noise reduction and responsiveness for crypto RL tasks.
 DATA_TIMEFRAME = "15m"
 
@@ -111,9 +112,32 @@ INDICATORS = [
 # Turbulence calculation (market stress indicator)
 ENABLE_TURBULENCE = True
 
-# VIX - CBOE Volatility Index (real data from S&P 500)
-ENABLE_VIX = True
-VIX_SYMBOL = "^VIX"
+# -----------------------------------------------------------
+# External Assets Registry (Hybrid Data)
+# -----------------------------------------------------------
+# A list of external financial assets to merge with crypto data.
+# Each asset defines its source, storage location, and sync rules.
+EXTERNAL_ASSETS = [
+    {
+        "enabled": True,  # Master switch for this asset
+        "ticker": "^VIX",  # Yahoo Finance symbol
+        "col_name": "vix",  # Column name in final DataFrame
+
+        # 'hybrid' mode: Stitches local CSV (history) with Yahoo API (live)
+        "source": "hybrid",
+
+        # Location where the historical CSV will be stored/loaded from
+        "local_path": "data/download_data/external/vix_15m_history.csv",
+
+        # Backup URL for auto-downloading the history file if missing
+        # (Replace with your actual GitHub Release link when ready)
+        "download_url": "https://github.com/YourUser/YourRepo/releases/download/v1.0/vix_15m_history.csv",
+
+        # Dynamic reference to the global setting
+        # This ensures the external asset always matches the system's heartbeat
+        "interval": DATA_TIMEFRAME
+    }
+]
 
 # Average slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
 SLIPPAGE_MEAN = 0.0001

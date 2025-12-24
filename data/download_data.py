@@ -39,6 +39,21 @@ def download_training_data():
     print("=" * 60)
     print("Bitcoin RL Training - Data Download")
     print("=" * 60)
+    # -----------------------------------------------------------
+    #  Ensure External Data Vault Exists
+    # -----------------------------------------------------------
+    external_path = Path("data/download_data/external")
+
+    if not external_path.exists():
+        print(f"   [Setup] Creating external data directory: {external_path}")
+        external_path.mkdir(parents=True, exist_ok=True)
+
+    # Create .gitignore automatically to ignore large CSVs
+    gitignore_path = external_path / ".gitignore"
+    if not gitignore_path.exists():
+        print(f"   [Setup] Creating .gitignore for external data")
+        with open(gitignore_path, "w") as f:
+            f.write("*\n")
 
     # Calculate date range
     end_date = datetime.now()
