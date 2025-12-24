@@ -121,8 +121,9 @@ def enrich_metadata_with_training_config(
         "timeframe": config.DATA_TIMEFRAME,
         "indicators": config.INDICATORS,
         "enable_turbulence": config.ENABLE_TURBULENCE,
-        "enable_vix": config.ENABLE_VIX,
-        "vix_symbol": getattr(config, "VIX_SYMBOL", None),
+        "enable_vix": any(asset.get('enabled', False) and asset.get('col_name') == 'vix' for asset in config.EXTERNAL_ASSETS),
+        "vix_symbol": next((asset.get('ticker') for asset in config.EXTERNAL_ASSETS if asset.get('col_name') == 'vix'), None),
+        "external_assets": [asset for asset in config.EXTERNAL_ASSETS if asset.get('enabled', False)],
     }
 
     # ------------------------------------------------------------

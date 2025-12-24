@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from data.data_processor import CcxtProcessor
+from data.data_processor import DataProcessor
 from data.strategy_processor import signal_to_onehot, calculate_lookback_candles
 from strategies.base_strategy import SignalType
 from strategies.registry import StrategyRegistry
@@ -242,10 +242,10 @@ class DataManager:
         (self.storage_path / "archived" / "raw").mkdir(parents=True, exist_ok=True)
         (self.storage_path / "archived" / "processed").mkdir(parents=True, exist_ok=True)
 
-        # Initialize CcxtProcessor for downloads
-        self.processor = CcxtProcessor(self.exchange)
+        # Initialize DataProcessor (wrapper with CcxtProcessor + ExternalDataManager)
+        self.processor = DataProcessor(data_source=self.exchange)
 
-        self.logger.info(f"DataManager initialized: {self.exchange} {self.trading_pair} {self.base_timeframe}")
+
 
     # ========================================================================
     # Phase 1: Smart Incremental Download
@@ -571,12 +571,12 @@ class DataManager:
 
     def add_base_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Add technical indicators, turbulence, and VIX using existing methods.
+        Add technical indicators, turbulence, and external data using existing methods.
 
         Uses CcxtProcessor methods:
         - add_technical_indicator()
         - add_turbulence() if config.ENABLE_TURBULENCE
-        - add_vix() if config.ENABLE_VIX
+        - add_external_data() for external assets (VIX, etc.)
 
         Args:
             df: Raw OHLCV DataFrame
@@ -594,9 +594,9 @@ class DataManager:
         if config.ENABLE_TURBULENCE:
             df = self.processor.add_turbulence(df)
 
-        # Add VIX (real volatility data)
-        if config.ENABLE_VIX:
-            df = self.processor.add_vix(df)
+        # Add external market data (VIX, etc.)
+        # Enabled assets are filtered inside add_external_data()
+        df = self.processor.add_external_data(df)
 
         return df
 
@@ -964,10 +964,15 @@ class DataManager:
         Returns:
             Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
         """
+        # Check if VIX is enabled in external assets
+        vix_enabled = any(
+            asset.get('enabled', False) and asset.get('col_name') == 'vix'
+            for asset in config.EXTERNAL_ASSETS
+        )
+
         price_array, tech_array, turbulence_array, signal_array = self.processor.df_to_array(
             df=df,
-            tech_indicator_list=config.INDICATORS,
-            if_vix=config.ENABLE_VIX
+            if_vix=vix_enabled
         )
 
         datetime_array = df["date"].to_numpy()

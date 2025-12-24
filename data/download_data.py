@@ -138,9 +138,9 @@ def download_training_data():
     if config.ENABLE_TURBULENCE:
         df = processor.add_turbulence(df)
 
-    # Add VIX
-    if config.ENABLE_VIX:
-        df = processor.add_vix(df)
+    # Add external market data (VIX, etc.)
+    # Enabled assets filtered inside add_external_data()
+    df = processor.add_external_data(df)
 
     # NOTE: Strategy signal processing has been removed from this legacy script.
     # For proper strategy processing with parallel execution and multi-timeframe support,

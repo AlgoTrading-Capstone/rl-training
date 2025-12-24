@@ -107,9 +107,11 @@ def run_backtest(
             f"training={train_data.get('enable_turbulence')})"
         )
 
-    if config.ENABLE_VIX != train_data.get("enable_vix"):
+    # Check VIX enabled status from EXTERNAL_ASSETS
+    backtest_vix_enabled = any(asset.get('enabled', False) and asset.get('col_name') == 'vix' for asset in config.EXTERNAL_ASSETS)
+    if backtest_vix_enabled != train_data.get("enable_vix"):
         turbulence_mismatches.append(
-            f"ENABLE_VIX (backtest={config.ENABLE_VIX}, "
+            f"VIX enabled (backtest={backtest_vix_enabled}, "
             f"training={train_data.get('enable_vix')})"
         )
 
@@ -117,7 +119,7 @@ def run_backtest(
         raise ValueError(
             "Turbulence / VIX configuration mismatch between training and backtest:\n"
             "  - " + "\n  - ".join(turbulence_mismatches) + "\n"
-            "Ensure ENABLE_TURBULENCE / ENABLE_VIX match the training configuration."
+            "Ensure ENABLE_TURBULENCE and VIX settings in EXTERNAL_ASSETS match the training configuration."
         )
 
     # --------------------------------------------------------

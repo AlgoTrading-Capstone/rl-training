@@ -3,7 +3,9 @@ Normalization utilities used by the Bitcoin trading environment.
 """
 
 import numpy as np
-from config import INITIAL_BALANCE, MAX_POSITION_BTC, ENABLE_TURBULENCE, ENABLE_VIX
+from config import INITIAL_BALANCE, MAX_POSITION_BTC, ENABLE_TURBULENCE,EXTERNAL_ASSETS
+
+
 
 
 def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, holdings):
@@ -82,7 +84,7 @@ def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, ho
         idx += 1
 
     # If VIX is enabled, take the next element (if exists)
-    if ENABLE_VIX and idx < len(turbulence_vec):
+    if any(asset.get('enabled', False) and asset.get('col_name') == 'vix' for asset in EXTERNAL_ASSETS) and idx < len(turbulence_vec):
         vix_val = float(turbulence_vec[idx])
         # Typical range [10, 80] - divide by 100, squash with tanh
         norm_turb_list.append(np.tanh(vix_val / 100.0))
@@ -233,7 +235,7 @@ def inverse_normalize_state(
         # inverse tanh
         turb_raw["turbulence"] = float(np.arctanh(np.clip(norm_turb, -0.999, 0.999)) / 20.0)
 
-    if ENABLE_VIX:
+    if any(asset.get('enabled', False) and asset.get('col_name') == 'vix' for asset in EXTERNAL_ASSETS):
         norm_vix = state_norm[idx]
         idx += 1
         turb_raw["vix"] = float(np.arctanh(np.clip(norm_vix, -0.999, 0.999)) * 100.0)
