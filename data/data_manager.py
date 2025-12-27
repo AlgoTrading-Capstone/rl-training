@@ -291,9 +291,9 @@ class DataManager:
         start_iso = self.processor._convert_to_iso_date(start_date)
         end_iso = self.processor._convert_to_iso_date(end_date)
 
-        # Parse to datetime
-        requested_start = pd.to_datetime(start_iso)
-        requested_end = pd.to_datetime(end_iso)
+        # Parse to datetime with explicit ISO format
+        requested_start = pd.to_datetime(start_iso, format="ISO8601")
+        requested_end = pd.to_datetime(end_iso, format="ISO8601")
 
         # Get actual range in DataFrame
         df_start = df['date'].min()
@@ -318,9 +318,9 @@ class DataManager:
         start_iso = self.processor._convert_to_iso_date(start_date)
         end_iso = self.processor._convert_to_iso_date(end_date)
 
-        # Parse to datetime
-        requested_start = pd.to_datetime(start_iso)
-        requested_end = pd.to_datetime(end_iso)
+        # Parse to datetime with explicit ISO format
+        requested_start = pd.to_datetime(start_iso, format="ISO8601")
+        requested_end = pd.to_datetime(end_iso, format="ISO8601")
 
         # Filter
         mask = (df['date'] >= requested_start) & (df['date'] <= requested_end)
@@ -394,8 +394,8 @@ class DataManager:
         existing_start = existing_df['date'].min()
         existing_end = existing_df['date'].max()
 
-        req_start = pd.to_datetime(requested_start)
-        req_end = pd.to_datetime(requested_end)
+        req_start = pd.to_datetime(requested_start, format="ISO8601")
+        req_end = pd.to_datetime(requested_end, format="ISO8601")
 
         # Gap before existing data
         if req_start < existing_start:
