@@ -14,7 +14,8 @@ import config
 import yfinance as yf
 from utils.progress import ProgressTracker
 from data.external_manager import ExternalDataManager
-from utils.logger import RLLogger
+from utils.logger import RLLogger, LogComponent
+from utils.date_display import format_date_range_for_display
 
 class CcxtProcessor:
     """
@@ -22,14 +23,16 @@ class CcxtProcessor:
     Supports any CCXT exchange (Binance, Kraken, etc.)
     """
 
-    def __init__(self, exchange_name: str = None):
+    def __init__(self, exchange_name: str = None, logger=None):
         """
         Initialize CCXT exchange connection
 
         Args:
             exchange_name: CCXT exchange identifier (default from config)
+            logger: Logger instance (optional, but recommended)
         """
         self.exchange_name = exchange_name or config.EXCHANGE_NAME
+        self.logger = logger  # May be None initially
         self._initialize_exchange()
 
     def _initialize_exchange(self) -> None:
@@ -60,7 +63,8 @@ class CcxtProcessor:
         try:
             dt = datetime.strptime(date_str, "%d-%m-%Y")
             iso_date = dt.strftime("%Y-%m-%d")
-            print(f"   [DATE DEBUG] Input: '{date_str}' (DD-MM-YYYY) → Parsed as: {iso_date} ({dt.strftime('%B %d, %Y')})")
+            if self.logger:
+                self.logger.debug(f"Date conversion: '{date_str}' (DD-MM-YYYY) → {iso_date} ({dt.strftime('%B %d, %Y')})")
             return iso_date
         except ValueError:
             pass
@@ -69,7 +73,8 @@ class CcxtProcessor:
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             iso_date = dt.strftime("%Y-%m-%d")
-            print(f"   [DATE DEBUG] Input: '{date_str}' (YYYY-MM-DD) → Already ISO: {iso_date}")
+            if self.logger:
+                self.logger.debug(f"Date already in ISO format: '{date_str}' → {iso_date}")
             return iso_date
         except ValueError:
             raise ValueError(
@@ -99,14 +104,15 @@ class CcxtProcessor:
         all_data = []
 
         for symbol in ticker_list:
-            print(f"\n Downloading {symbol} data...")
-            print(f"   Timeframe: {time_interval}")
-            print(f"   Period: {start_date} to {end_date}")
-
-            # Convert dates to timestamps
-            # Handle both DD-MM-YYYY and YYYY-MM-DD formats
+            # Convert dates to ISO format first for internal processing
             start_iso = self._convert_to_iso_date(start_date)
             end_iso = self._convert_to_iso_date(end_date)
+
+            # Display with DD-MM-YYYY format for user-facing logs
+            date_range_display = format_date_range_for_display(start_iso, end_iso)
+
+            if self.logger:
+                self.logger.info(f"Downloading {symbol} data (Timeframe: {time_interval}, Period: {date_range_display})")
 
             since = self.exchange.parse8601(f"{start_iso}T00:00:00Z")
             until = self.exchange.parse8601(f"{end_iso}T23:59:59Z")
@@ -126,14 +132,16 @@ class CcxtProcessor:
                     'tic': symbol
                 })
 
-            print(f" Downloaded {len(candles)} candles for {symbol}")
+            if self.logger:
+                self.logger.info(f"Downloaded {len(candles)} candles for {symbol}")
 
         # Create DataFrame
         df = pd.DataFrame(all_data)
 
         # Handle empty downloads (e.g., future dates)
         if len(df) == 0:
-            print(" Warning: No data available for requested range")
+            if self.logger:
+                self.logger.warning("No data available for requested range")
             # Return empty DataFrame with correct columns
             return pd.DataFrame(columns=['date', 'open', 'high', 'low', 'close', 'volume', 'tic'])
 
@@ -146,8 +154,13 @@ class CcxtProcessor:
         # Sort by date
         df = df.sort_values('date').reset_index(drop=True) #drop=True means "don't keep the old index as a column"
 
-        print(f"\n Total data points: {len(df)}")
-        print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
+        # Log summary with date formatters
+        if self.logger:
+            actual_range = format_date_range_for_display(
+                df['date'].min().strftime('%Y-%m-%d'),
+                df['date'].max().strftime('%Y-%m-%d')
+            )
+            self.logger.info(f"Total data points: {len(df)}, Date range: {actual_range}")
 
         return df
 
@@ -220,15 +233,18 @@ class CcxtProcessor:
                     break
 
             except ccxt.NetworkError as e:
-                print(f"\n   Network error: {e}. Retrying...")
+                if self.logger:
+                    self.logger.warning(f"Network error: {e}. Retrying...")
                 continue
 
             except ccxt.ExchangeError as e:
-                print(f"\n   Exchange error: {e}")
+                if self.logger:
+                    self.logger.error(f"Exchange error: {e}")
                 break
 
             except Exception as e:
-                print(f"\n   Unexpected error: {e}")
+                if self.logger:
+                    self.logger.error(f"Unexpected error: {e}")
                 break
 
         # Ensure progress bar reaches 100% and close
@@ -242,7 +258,8 @@ class CcxtProcessor:
         """
         Clean and validate market data
         """
-        print("\n  Cleaning data...")
+        if self.logger:
+            self.logger.info("Cleaning data...")
 
         initial_rows = len(df)
 
@@ -272,7 +289,8 @@ class CcxtProcessor:
         final_rows = len(df)
         removed = initial_rows - final_rows
 
-        print(f"  Cleaned data: {final_rows} rows (removed {removed} invalid rows)")
+        if self.logger:
+            self.logger.info(f"Cleaned data: {final_rows} rows (removed {removed} invalid rows)")
 
         return df
 
@@ -291,7 +309,8 @@ class CcxtProcessor:
         Returns:
             DataFrame with added technical indicators
         """
-        print(f"\n  Calculating {len(tech_indicator_list)} technical indicators...")
+        if self.logger:
+            self.logger.info(f"Calculating {len(tech_indicator_list)} technical indicators...")
 
         df = df.copy()
 
@@ -348,7 +367,8 @@ class CcxtProcessor:
                     )
                     df.loc[mask, 'boll_lb'] = lower
 
-        print(f"  Technical indicators calculated")
+        if self.logger:
+            self.logger.info("Technical indicators calculated")
 
         return df
 
@@ -358,10 +378,12 @@ class CcxtProcessor:
         Controlled by config.ENABLE_TURBULENCE
         """
         if not config.ENABLE_TURBULENCE:
-            print("  Turbulence calculation disabled (config.ENABLE_TURBULENCE = False)")
+            if self.logger:
+                self.logger.info("Turbulence calculation disabled (config.ENABLE_TURBULENCE = False)")
             return df
 
-        print("\n  Calculating turbulence index...")
+        if self.logger:
+            self.logger.info("Calculating turbulence index...")
         df = df.copy()
 
         df['turbulence'] = df.groupby('tic')['close'].transform(
@@ -369,7 +391,8 @@ class CcxtProcessor:
         )
         df['turbulence'] = df['turbulence'].fillna(0)
 
-        print("  Turbulence index calculated")
+        if self.logger:
+            self.logger.info("Turbulence index calculated")
         return df
 
 
@@ -396,8 +419,6 @@ class CcxtProcessor:
             It is handled at DataManager level as a separate datetime_array
             for logging and backtesting purposes.
         """
-        print("\n Converting to numpy arrays...")
-
         # Price array: [open, high, low, close, volume]
         price_array = df[['open', 'high', 'low', 'close', 'volume']].values
 
