@@ -395,8 +395,12 @@ class DataManager:
         existing_start = existing_df['date'].min()
         existing_end = existing_df['date'].max()
 
-        req_start = pd.to_datetime(requested_start, format="ISO8601")
-        req_end = pd.to_datetime(requested_end, format="ISO8601")
+        # Convert dates to ISO format first (handles both DD-MM-YYYY and YYYY-MM-DD)
+        start_iso = self.processor._convert_to_iso_date(requested_start)
+        end_iso = self.processor._convert_to_iso_date(requested_end)
+
+        req_start = pd.to_datetime(start_iso, format="ISO8601")
+        req_end = pd.to_datetime(end_iso, format="ISO8601")
 
         # Gap before existing data
         if req_start < existing_start:
