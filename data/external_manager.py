@@ -101,7 +101,7 @@ class ExternalDataManager:
             try:
                 self.logger.debug(f"Loading {ticker} from cache: {local_path}")
                 df = pd.read_csv(local_path)
-                df['Date'] = pd.to_datetime(df['Date'], utc=True)
+                df['Date'] = pd.to_datetime(df['Date'], format="ISO8601", utc=True)
                 df = df.set_index('Date').sort_index()
                 # Check if cache is recent (optional optimization for later)
                 return df.rename(columns={'Close': 'price'})[['price']]
