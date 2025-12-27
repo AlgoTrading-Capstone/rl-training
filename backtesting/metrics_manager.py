@@ -43,6 +43,7 @@ def compute_and_write_metrics(
     *,
     out_dir: Path,
     model_metadata: Dict[str, Any],
+    backtest_config: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Compute all backtest metrics and write metrics.json.
@@ -69,6 +70,7 @@ def compute_and_write_metrics(
         steps_df=steps_df,
         model_metadata=model_metadata,
         summary=summary,
+        backtest_config=backtest_config,
     )
 
     # --------------------------------------------------------
@@ -144,7 +146,7 @@ def _load_summary(out_dir: Path) -> Dict[str, Any]:
 # Metric groups
 # ============================================================
 
-def _compute_run_metadata(*, steps_df, model_metadata, summary):
+def _compute_run_metadata(*, steps_df, model_metadata, summary, backtest_config):
     """
     Compute basic run metadata from model metadata and steps.csv.
 
@@ -155,13 +157,8 @@ def _compute_run_metadata(*, steps_df, model_metadata, summary):
     if steps_df.empty:
         raise ValueError("steps.csv is empty; cannot compute run metadata.")
 
-    # Extract from metadata
-    backtests = model_metadata.get("backtests", [])
-    run_id = backtests[-1]["id"] if backtests else None
-
+    run_id = backtest_config.get("id")
     timeframe = model_metadata["data"]["timeframe"]
-
-    # Extract from summary
     initial_equity = float(summary["initial_equity"])
 
     run_metadata = {

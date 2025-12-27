@@ -21,6 +21,7 @@ from backtesting.step_logger import StepLogger
 from backtesting.state_debug_logger import StateDebugLogger
 from backtesting.trade_tracker import TradeTracker
 from backtesting.metrics_manager import compute_and_write_metrics
+from backtesting.plots.plot_runner import generate_backtest_plots
 
 
 # ============================================================
@@ -37,6 +38,7 @@ def run_backtest(
     signal_array: np.ndarray,
     datetime_array: np.ndarray,
     out_dir: str | Path,
+    backtest_config: Dict[str, Any],
 ) -> None:
     """
     Execute a single backtest run and persist raw logs.
@@ -386,13 +388,25 @@ def run_backtest(
     print(f"[INFO] Backtest completed. Results saved to: {out_dir}")
     print(f"[INFO] Artifacts: steps.csv, state_debug.csv, trades.csv, summary.json")
 
+    # --------------------------------------------------------
+    # STEP 7: Compute metrics & generate plots
+    # --------------------------------------------------------
+
     compute_and_write_metrics(
         out_dir=out_dir,
         model_metadata=model_metadata,
+        backtest_config=backtest_config,
     )
 
     print(f"[INFO] Backtest metrics computed and saved.")
 
+    generate_backtest_plots(
+        out_dir=out_dir,
+        model_metadata=model_metadata,
+        backtest_config=backtest_config,
+    )
+
+    print(f"[INFO] Backtest plots generated and saved.")
 
 # ============================================================
 # Internal helpers
@@ -413,7 +427,7 @@ def _load_actor(
     model = rl_model.upper()
     agent_cls = AgentPPO if model == "PPO" else AgentSAC
 
-    agent = agent_cls(
+    agent_cls(
         net_dims=net_dims,
         state_dim=state_dim,
         action_dim=action_dim,

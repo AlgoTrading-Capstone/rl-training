@@ -189,6 +189,7 @@ def run_backtest_pipeline(
 
         backtests_root = run_path / "backtests"
         backtest_dir = backtests_root / backtest_id
+        backtest_config["id"] = backtest_id
 
         # Create directories
         backtests_root.mkdir(exist_ok=True)
@@ -259,6 +260,7 @@ def run_backtest_pipeline(
                 signal_array=signal_array,
                 datetime_array=datetime_array,
                 out_dir=backtest_dir,
+                backtest_config=backtest_config,
             )
 
             logger.info(f"Backtest results saved to: {backtest_dir}")
@@ -270,31 +272,33 @@ def run_backtest_pipeline(
             )
             logger.exception(error_msg)  # Logs error + traceback
             raise
-    # --------------------------------------------------------
-    # STEP 10: Append backtest metadata
-    # --------------------------------------------------------
-    with logger.phase("Metadata Update", 3, 3):
-        try:
-            backtest_entry = {
-                "id": backtest_id,
-                "created_at": datetime.utcnow().isoformat(),
-                "start_date": backtest_config["start_date"],
-                "end_date": backtest_config["end_date"],
-                "overlaps_training": backtest_config["overlaps_training"],
-                "output_dir": f"backtests/{backtest_id}",
-            }
 
-            append_backtest_metadata(run_path, backtest_entry)
+        # --------------------------------------------------------
+        # STEP 10: Append backtest metadata
+        # --------------------------------------------------------
+        with logger.phase("Metadata Update", 3, 3):
+            try:
+                backtest_entry = {
+                    "id": backtest_id,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "start_date": backtest_config["start_date"],
+                    "end_date": backtest_config["end_date"],
+                    "overlaps_training": backtest_config["overlaps_training"],
+                    "output_dir": f"backtests/{backtest_id}",
+                }
 
-            logger.success("Backtest completed and metadata updated")
+                append_backtest_metadata(run_path, backtest_entry)
 
-        except Exception as e:
-            error_msg = Formatter.error_context(
-                f"ERROR UPDATING BACKTEST METADATA: {e}",
-                f"Metadata file: {run_path / 'metadata.json'}"
-            )
-            logger.exception(error_msg)  # Logs error + traceback
-            raise
+                logger.success("Backtest metadata updated")
+
+            except Exception as e:
+                error_msg = Formatter.error_context(
+                    f"ERROR UPDATING BACKTEST METADATA: {e}",
+                    f"Metadata file: {run_path / 'metadata.json'}"
+                )
+                logger.exception(error_msg)  # Logs error + traceback
+                raise
+
 
 def main():
     # Initialize active logger reference (before run_path is created)
