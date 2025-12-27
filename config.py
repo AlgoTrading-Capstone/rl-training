@@ -210,3 +210,15 @@ USE_PREPROCESSED_DATA = True
 #       ├── raw/
 #       └── processed/
 DATA_ROOT_PATH = "data/download_data"
+
+# ============================================================================
+# Date Format Standards
+# ============================================================================
+
+# User display format (console output via formatter)
+USER_DATE_FORMAT = "%d-%m-%Y"                    # DD-MM-YYYY
+USER_DATETIME_FORMAT = "%d-%m-%Y %H:%M:%S"      # DD-MM-YYYY HH:MM:SS
+
+# Internal format (storage, processing, DEBUG logs)
+INTERNAL_ISO_FORMAT = "%Y-%m-%d"                 # YYYY-MM-DD (ISO 8601)
+INTERNAL_ISO_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"  # YYYY-MM-DD HH:MM:SS
