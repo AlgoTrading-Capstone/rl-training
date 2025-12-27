@@ -161,11 +161,11 @@ class StepLogger:
             idx += 4
 
             if s[0] == 1:
-                decision = "LONG"
-            elif s[1] == 1:
-                decision = "SHORT"
-            elif s[2] == 1:
                 decision = "FLAT"
+            elif s[1] == 1:
+                decision = "LONG"
+            elif s[2] == 1:
+                decision = "SHORT"
             elif s[3] == 1:
                 decision = "HOLD"
             else:
