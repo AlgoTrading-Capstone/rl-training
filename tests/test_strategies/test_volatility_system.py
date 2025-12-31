@@ -14,6 +14,7 @@ the original Freqtrade VolatilitySystem exactly.
 import pytest
 import pandas as pd
 import numpy as np
+import talib.abstract as ta
 from pandas import DataFrame
 
 from strategies.volatility_system import VolatilitySystem
@@ -35,13 +36,10 @@ def reference_volatility_calculation(df: DataFrame) -> DataFrame:
     """
     df = df.copy()
 
-    # ATR calculation (using 3h timeframe in original, but testing on base timeframe)
-    period = 14
-    df['h-l'] = df['high'] - df['low']
-    df['h-pc'] = abs(df['high'] - df['close'].shift(1))
-    df['l-pc'] = abs(df['low'] - df['close'].shift(1))
-    df['tr'] = df[['h-l', 'h-pc', 'l-pc']].max(axis=1)
-    df['atr'] = df['tr'].rolling(window=period).mean()
+    # ATR calculation using TA-Lib (same as optimized version)
+    # CRITICAL: TA-Lib uses Wilder's smoothing, not simple moving average
+    # Multiplied by 2.0 as in original Freqtrade strategy
+    df['atr'] = ta.ATR(df, timeperiod=14) * 2.0
 
     # Close change calculation
     df['close_change'] = df['close'] - df['close'].shift(1)

@@ -38,17 +38,31 @@ class VolatilitySystem(BaseStrategy):
             lookback_hours=66  # 14 * 3 + 24 buffer
         )
 
+    def _calculate_volatility_indicators(self, df: DataFrame) -> DataFrame:
+        """
+        Calculate core volatility indicators (ATR and close_change) on input dataframe.
+
+        This method is used for testing and operates on the provided timeframe directly.
+        For production use, _calculate_indicators() applies this to resampled data.
+        """
+        df = df.copy()
+
+        # ATR (period 14) * 2
+        df["atr"] = ta.ATR(df, timeperiod=14) * 2.0
+
+        # Close-change absolute
+        df["close_change"] = df["close"].diff()
+        df["abs_close_change"] = df["close_change"].abs()
+
+        return df
+
     def _calculate_indicators(self, df: DataFrame) -> DataFrame:
         """Reproduce populate_indicators() logic from Freqtrade version."""
         resample_int = 60 * 3  # 3 hours in minutes
         resampled = resample_to_interval(df, resample_int)
 
-        # ATR (period 14) * 2
-        resampled["atr"] = ta.ATR(resampled, timeperiod=14) * 2.0
-
-        # Close-change absolute
-        resampled["close_change"] = resampled["close"].diff()
-        resampled["abs_close_change"] = resampled["close_change"].abs()
+        # Calculate indicators on resampled data
+        resampled = self._calculate_volatility_indicators(resampled)
 
         # Merge back into original df
         df = resampled_merge(df, resampled, fill_na=True)
