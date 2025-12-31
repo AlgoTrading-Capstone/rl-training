@@ -68,6 +68,7 @@ def build_elegantrl_config(
     train_max_step: int,
     eval_max_step: int,
     run_path: Path,
+    logger,
 ) -> Config:
     if RL_MODEL not in SUPPORTED_RL_MODELS:
         raise ValueError(f"Unsupported RL_MODEL='{RL_MODEL}'. Supported: {SUPPORTED_RL_MODELS}")
@@ -150,6 +151,7 @@ def build_elegantrl_config(
         algorithm_config=algo_cfg,
         state_dim=state_dim,
         action_dim=action_dim,
+        logger=logger,
     )
 
     return erl_config

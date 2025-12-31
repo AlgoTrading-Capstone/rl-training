@@ -28,6 +28,26 @@ class TradeTracker:
     Tracks a single active position-trade and logs completed trades.
     """
 
+    # CSV field schema (defined upfront to ensure header is always written)
+    FIELDNAMES = [
+        "trade_id",
+        "side",
+        "open_timestamp",
+        "open_price",
+        "open_size_btc",
+        "open_equity",
+        "stop_price",
+        "close_timestamp",
+        "close_price",
+        "close_reason",
+        "close_size_btc",
+        "close_equity",
+        "pnl_method",
+        "pnl_usd",
+        "pnl_pct",
+        "is_stop",
+    ]
+
     def __init__(self, out_dir: str | Path):
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -45,8 +65,10 @@ class TradeTracker:
     # File lifecycle
     # ----------------------------------------------------
     def open(self) -> None:
+        """Open trades.csv and write header immediately (ensures valid CSV even with 0 trades)."""
         self._file = self.file_path.open("w", newline="", encoding="utf-8")
-        self._writer = None
+        self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDNAMES)
+        self._writer.writeheader()
 
     def close(self) -> None:
         if self._file:
@@ -278,8 +300,5 @@ class TradeTracker:
         self._write_trade(row)
 
     def _write_trade(self, row: Dict[str, Any]) -> None:
-        if self._writer is None:
-            self._writer = csv.DictWriter(self._file, fieldnames=row.keys())
-            self._writer.writeheader()
-
+        """Write a completed trade to trades.csv."""
         self._writer.writerow(row)

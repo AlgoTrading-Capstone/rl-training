@@ -51,6 +51,7 @@ def run_training_pipeline(
                 start_date=train_start,
                 end_date=train_end,
                 strategy_list=strategy_list,
+                context="Training"
             )
 
             logger.info(f"Loaded {price_array.shape[0]} timesteps for training")
@@ -115,6 +116,7 @@ def run_training_pipeline(
                 train_max_step=train_max_step,
                 eval_max_step=eval_max_step,
                 run_path=run_path,
+                logger=logger,
             )
 
             logger.info("ElegantRL configuration built successfully")
@@ -232,6 +234,7 @@ def run_backtest_pipeline(
                 start_date=backtest_config["start_date"],
                 end_date=backtest_config["end_date"],
                 strategy_list=strategy_list,
+                context="Backtest"
             )
 
             logger.info(f"Loaded {price_array.shape[0]} timesteps for backtesting")
@@ -261,6 +264,7 @@ def run_backtest_pipeline(
                 datetime_array=datetime_array,
                 out_dir=backtest_dir,
                 backtest_config=backtest_config,
+                logger=logger,
             )
 
             logger.info(f"Backtest results saved to: {backtest_dir}")
@@ -349,7 +353,7 @@ def main():
 
             # Display configuration
             Formatter.display_training_config(metadata, active_logger)
-            create_metadata_file(metadata, run_path)
+            create_metadata_file(metadata, run_path, active_logger)
             run_training_pipeline(metadata, run_path, manager, active_logger)
             run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
 
@@ -370,7 +374,7 @@ def main():
             # Display configuration
             Formatter.display_training_config(metadata, active_logger)
 
-            create_metadata_file(metadata, run_path)
+            create_metadata_file(metadata, run_path, active_logger)
             run_training_pipeline(metadata, run_path, manager, active_logger)
 
         elif run_mode == "BACKTEST_ONLY":

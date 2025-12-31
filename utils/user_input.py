@@ -12,8 +12,11 @@ from typing import Optional, Dict, Any, Tuple
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.table import Table
+from rich import box
 
-from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT
+from config import RESULTS_PATH, TRAINING_MACHINE_NAME, TRAIN_TEST_SPLIT, USER_DATE_FORMAT
+from utils.formatting import Formatter
 from utils.metadata import load_metadata
 
 # Initialize rich console for styled output
@@ -22,12 +25,15 @@ console = Console()
 
 def styled_header(text: str) -> None:
     """Display styled header matching logger.py format."""
+    console.print()  # Add spacing before header
     console.print(Panel(
-        Text(text, style="bold cyan"),
+        Text(text, style="bold cyan", justify="center"),
         border_style="cyan",
-        padding=(0, 2),
-        expand=False
+        padding=(1, 2),
+        expand=False,
+        box=box.ROUNDED
     ))
+    console.print()  # Add spacing after header
 
 
 def styled_prompt(prompt_text: str, style: str = "yellow") -> str:
@@ -37,7 +43,7 @@ def styled_prompt(prompt_text: str, style: str = "yellow") -> str:
 
 def styled_info(text: str) -> None:
     """Display info message matching logger.py INFO level."""
-    console.print(f"[cyan]ℹ[/cyan] {text}")
+    console.print(f"[bold]ℹ[/bold] {text}")
 
 
 def styled_warning(text: str) -> None:
@@ -66,7 +72,7 @@ def input_model_name() -> str:
         if re.fullmatch(r"[A-Za-z0-9_]+", name):
             return name
 
-        styled_error("Invalid model name. Use only letters, numbers, and underscore.")
+        styled_error(f"Invalid model name '{name}'. Use only letters, numbers, and underscore.")
     raise RuntimeError("Should be unreachable")
 
 def input_description() -> str:
@@ -81,7 +87,7 @@ def input_date(prompt: str) -> datetime:
         try:
             return datetime.strptime(raw, "%d-%m-%Y")
         except ValueError:
-            styled_error("Invalid date format. Expected DD-MM-YYYY.")
+            styled_error(f"Invalid date format '{raw}'. Expected DD-MM-YYYY (e.g., 25-12-2024).")
 
 
 def create_run_folder(model_name: str) -> Path:
@@ -130,11 +136,10 @@ def collect_training_date_range() -> tuple[datetime, datetime]:
         train_start_dt: datetime
         train_end_dt: datetime
     """
-    console.print()
     styled_header("Enter TRAINING Date Range")
-    styled_info(f"The environment will automatically split this range into:")
-    console.print(f"  [cyan]•[/cyan] Training: [bold]{int(TRAIN_TEST_SPLIT * 100)}%[/bold]")
-    console.print(f"  [cyan]•[/cyan] Testing:  [bold]{int((1 - TRAIN_TEST_SPLIT) * 100)}%[/bold]")
+    styled_info("The environment will automatically split this range into:")
+    console.print(f"  [cyan]➤[/cyan] Training: [bold cyan]{int(TRAIN_TEST_SPLIT * 100)}%[/bold cyan]")
+    console.print(f"  [cyan]➤[/cyan] Testing:  [bold cyan]{int((1 - TRAIN_TEST_SPLIT) * 100)}%[/bold cyan]")
     console.print()
 
     while True:
@@ -146,11 +151,19 @@ def collect_training_date_range() -> tuple[datetime, datetime]:
             console.print()
             continue
 
-        duration_days = (end_dt - start_dt).days
-        console.print(f"\n[cyan]Training period:[/cyan]")
-        console.print(f"  Start:    {start_dt.strftime('%Y-%m-%d')}")
-        console.print(f"  End:      {end_dt.strftime('%Y-%m-%d')}")
-        console.print(f"  Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
+        duration_str = Formatter.format_date_range_duration(start_dt, end_dt)
+
+        # Display using Rich Table for better visual hierarchy
+        console.print()
+        table = Table(show_header=False, box=None, padding=(0, 1), show_edge=False)
+        table.add_column("Label", style="cyan", justify="right", no_wrap=True)
+        table.add_column("Value", style="white")
+        table.add_row("[bold]Training Period:[/bold]", "")
+        table.add_row("  Start:", start_dt.strftime(USER_DATE_FORMAT))
+        table.add_row("  End:", end_dt.strftime(USER_DATE_FORMAT))
+        table.add_row("  Duration:", duration_str)
+        console.print(table)
+        console.print()
 
         confirm = styled_prompt("Is this correct? (yes/no):", style="green")
         if confirm.lower() in ("yes", "y"):
@@ -174,7 +187,6 @@ def collect_backtest_date_range(
         bt_end_dt: datetime
         overlap: bool
     """
-    console.print()
     styled_header("Enter BACKTEST Date Range")
     styled_info("This range will be used ONLY for backtesting the model.")
     console.print()
@@ -193,11 +205,24 @@ def collect_backtest_date_range(
             overlap = not (bt_end_dt <= train_start_dt or bt_start_dt >= train_end_dt)
 
             if overlap:
+                # Create prominent warning panel
                 console.print()
-                styled_warning("[WARNING] Backtest date range OVERLAPS with training period!")
-                console.print(f"  Training: {train_start_dt.strftime('%Y-%m-%d')} → {train_end_dt.strftime('%Y-%m-%d')}")
-                console.print(f"  Backtest: {bt_start_dt.strftime('%Y-%m-%d')} → {bt_end_dt.strftime('%Y-%m-%d')}")
-                console.print("\n[yellow]⚠[/yellow] Running backtest on overlapping data may cause data leakage.\n")
+                warning_text = Text()
+                warning_text.append("⚠ WARNING: ", style="bold yellow")
+                warning_text.append("Backtest date range OVERLAPS with training period!\n\n", style="yellow")
+                warning_text.append(f"Training: {train_start_dt.strftime(USER_DATE_FORMAT)} → {train_end_dt.strftime(USER_DATE_FORMAT)}\n")
+                warning_text.append(f"Backtest: {bt_start_dt.strftime(USER_DATE_FORMAT)} → {bt_end_dt.strftime(USER_DATE_FORMAT)}\n\n")
+                warning_text.append("⚠ Running backtest on overlapping data may cause data leakage.", style="bold yellow")
+
+                console.print(Panel(
+                    warning_text,
+                    border_style="yellow",
+                    padding=(1, 2),
+                    title="[yellow]Data Leakage Risk[/yellow]",
+                    title_align="left",
+                    box=box.ROUNDED
+                ))
+                console.print()
 
                 proceed = styled_prompt("Do you want to continue anyway? (yes/no):", style="yellow")
                 if proceed.lower() not in ("yes", "y"):
@@ -205,11 +230,19 @@ def collect_backtest_date_range(
                     console.print()
                     continue
 
-        duration_days = (bt_end_dt - bt_start_dt).days
-        console.print(f"\n[cyan]Backtest period:[/cyan]")
-        console.print(f"  Start:    {bt_start_dt.strftime('%Y-%m-%d')}")
-        console.print(f"  End:      {bt_end_dt.strftime('%Y-%m-%d')}")
-        console.print(f"  Duration: {duration_days} days (~{duration_days / 30:.1f} months)\n")
+        duration_str = Formatter.format_date_range_duration(bt_start_dt, bt_end_dt)
+
+        # Display using Rich Table for better visual hierarchy
+        console.print()
+        table = Table(show_header=False, box=None, padding=(0, 1), show_edge=False)
+        table.add_column("Label", style="cyan", justify="right", no_wrap=True)
+        table.add_column("Value", style="white")
+        table.add_row("[bold]Backtest Period:[/bold]", "")
+        table.add_row("  Start:", bt_start_dt.strftime(USER_DATE_FORMAT))
+        table.add_row("  End:", bt_end_dt.strftime(USER_DATE_FORMAT))
+        table.add_row("  Duration:", duration_str)
+        console.print(table)
+        console.print()
 
         confirm = styled_prompt("Is this correct? (yes/no):", style="green")
         if confirm.lower() in ("yes", "y"):
@@ -251,10 +284,15 @@ def select_existing_model_run() -> Tuple[Path, Dict[str, Any]]:
             "Expected each run to contain metadata.json and elegantrl/act.pth."
         )
 
-    console.print()
     styled_header("Available Trained Models")
+
+    # Display models in a table for better readability
+    table = Table(show_header=False, box=None, padding=(0, 2), show_edge=False)
+    table.add_column("No.", style="cyan bold", justify="right", width=4)
+    table.add_column("Model Name", style="white")
     for idx, run in enumerate(valid_runs, 1):
-        console.print(f"  [cyan]{idx}.[/cyan] {run.name}")
+        table.add_row(f"{idx}.", run.name)
+    console.print(table)
 
     while True:
         console.print()
@@ -284,11 +322,16 @@ def collect_run_mode() -> str:
     Returns:
         run_mode (str)
     """
-    console.print()
     styled_header("Select Execution Mode")
-    console.print("  [cyan]1[/cyan] - Train new model and run backtest automatically")
-    console.print("  [cyan]2[/cyan] - Train new model only")
-    console.print("  [cyan]3[/cyan] - Run backtest on existing model")
+
+    # Display modes in a table for better UX
+    table = Table(show_header=False, box=None, padding=(0, 2), show_edge=False)
+    table.add_column("Choice", style="cyan bold", justify="center", width=8)
+    table.add_column("Description", style="white")
+    table.add_row("1", "Train new model and run backtest automatically")
+    table.add_row("2", "Train new model only")
+    table.add_row("3", "Run backtest on existing model")
+    console.print(table)
     console.print()
 
     valid_choices = {

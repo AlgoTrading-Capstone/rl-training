@@ -22,6 +22,7 @@ from backtesting.state_debug_logger import StateDebugLogger
 from backtesting.trade_tracker import TradeTracker
 from backtesting.metrics_manager import compute_and_write_metrics
 from backtesting.plots.plot_runner import generate_backtest_plots
+from utils.logger import RLLogger, LogComponent
 
 
 # ============================================================
@@ -39,18 +40,34 @@ def run_backtest(
     datetime_array: np.ndarray,
     out_dir: str | Path,
     backtest_config: Dict[str, Any],
+    logger: RLLogger,
 ) -> None:
     """
     Execute a single backtest run and persist raw logs.
 
+    Args:
+        model_metadata: Training run metadata from metadata.json
+        act_path: Path to trained actor checkpoint (act.pth)
+        price_array: OHLCV price data
+        tech_array: Technical indicators
+        turbulence_array: Market stress indicators
+        signal_array: Strategy signals (One-Hot encoded)
+        datetime_array: Timestamps for each candle
+        out_dir: Output directory for backtest artifacts
+        backtest_config: Backtest configuration (date range, backtest_id)
+        logger: RLLogger instance for logging
+
     Artifacts written:
         - steps.csv   : full step-by-step log (includes full state vector)
         - summary.json: minimal run summary
+        - metrics.json: comprehensive performance metrics
+        - plots/*.png: visualization plots
 
     Raises:
-        ValueError on environment / model incompatibility
+        ValueError: On environment / model incompatibility
+        FileNotFoundError: If actor checkpoint not found
     """
-
+    backtest_logger = logger.for_component(LogComponent.BACKTEST)
     # --------------------------------------------------------
     # STEP 0: Validate inputs & prepare output dir
     # --------------------------------------------------------
@@ -385,8 +402,8 @@ def run_backtest(
 
     _write_json(out_dir / "summary.json", summary)
 
-    print(f"[INFO] Backtest completed. Results saved to: {out_dir}")
-    print(f"[INFO] Artifacts: steps.csv, state_debug.csv, trades.csv, summary.json")
+    backtest_logger.info(f"Backtest completed. Results saved to: {out_dir}")
+    backtest_logger.info("Artifacts: steps.csv, state_debug.csv, trades.csv, summary.json")
 
     # --------------------------------------------------------
     # STEP 7: Compute metrics & generate plots
@@ -398,7 +415,7 @@ def run_backtest(
         backtest_config=backtest_config,
     )
 
-    print(f"[INFO] Backtest metrics computed and saved.")
+    backtest_logger.success("Backtest metrics computed and saved")
 
     generate_backtest_plots(
         out_dir=out_dir,
@@ -406,7 +423,7 @@ def run_backtest(
         backtest_config=backtest_config,
     )
 
-    print(f"[INFO] Backtest plots generated and saved.")
+    backtest_logger.success("Backtest plots generated and saved")
 
 # ============================================================
 # Internal helpers

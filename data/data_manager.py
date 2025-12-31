@@ -144,7 +144,8 @@ def _process_single_strategy_with_resampling(
                 recommendation = strategy.run(df_window, timestamp)
                 signal = recommendation.signal
             except Exception as e:
-                print(f"  Warning: {strategy_name} failed at {timestamp}: {e}")
+                import logging
+                logging.warning(f"Strategy {strategy_name} failed at {timestamp}: {e}")
                 signal = SignalType.HOLD
         else:
             signal = SignalType.HOLD
@@ -531,9 +532,14 @@ class DataManager:
             # No missing data - load full data and filter to requested range
             self.logger.info("No missing data - using existing")
             existing_df = pd.read_parquet(filepath)
+
+            # Convert dates to ISO format before filtering (fix for DD-MM-YYYY vs YYYY-MM-DD)
+            start_iso = self.processor._convert_to_iso_date(start_date)
+            end_iso = self.processor._convert_to_iso_date(end_date)
+
             mask = (
-                (existing_df['date'] >= start_date) &
-                (existing_df['date'] <= end_date)
+                (existing_df['date'] >= start_iso) &
+                (existing_df['date'] <= end_iso)
             )
             return existing_df[mask].reset_index(drop=True)
 
@@ -563,10 +569,14 @@ class DataManager:
         # Save updated data
         self._save_raw_data(combined, filepath)
 
+        # Convert dates to ISO format before filtering (fix for DD-MM-YYYY vs YYYY-MM-DD)
+        start_iso = self.processor._convert_to_iso_date(start_date)
+        end_iso = self.processor._convert_to_iso_date(end_date)
+
         # Return requested range
         mask = (
-            (combined['date'] >= start_date) &
-            (combined['date'] <= end_date)
+            (combined['date'] >= start_iso) &
+            (combined['date'] <= end_iso)
         )
         return combined[mask].reset_index(drop=True)
 
@@ -724,7 +734,7 @@ class DataManager:
             List of strategy names to execute
         """
         if force:
-            print("  Force recalculate enabled - executing all strategies")
+            self.logger.debug("Force recalculate enabled - executing all strategies")
             return requested
 
         to_execute = []
@@ -733,14 +743,14 @@ class DataManager:
 
             if name_lower not in existing:
                 to_execute.append(strategy_name)
-                print(f"  Strategy {strategy_name}: Not found - will execute")
+                self.logger.debug(f"Strategy {strategy_name}: Not found - will execute")
             else:
                 # Validate existing data
                 if self._validate_strategy_columns(df, strategy_name):
-                    print(f"  Strategy {strategy_name}: Valid - skipping")
+                    self.logger.debug(f"Strategy {strategy_name}: Valid - skipping")
                 else:
                     to_execute.append(strategy_name)
-                    print(f"  Strategy {strategy_name}: Invalid data - will recalculate")
+                    self.logger.debug(f"Strategy {strategy_name}: Invalid data - will recalculate")
 
         return to_execute
 
@@ -801,7 +811,7 @@ class DataManager:
                 # Collect results with progress bar
                 pbar = ProgressTracker.process_items(
                     total=len(strategy_names),
-                    desc="Executing strategies",
+                    desc=f"Executing {len(strategy_names)} strategies in parallel",
                     unit="strategy"
                 )
                 for future in as_completed(futures):
@@ -824,7 +834,7 @@ class DataManager:
                 pbar.close()
         else:
             # Sequential execution
-            print("  Using sequential execution")
+            self.logger.info("Using sequential execution (fallback for single strategy)")
             for name in strategy_names:
                 try:
                     strategy_meta = registry[name]
@@ -840,9 +850,9 @@ class DataManager:
                     df[f'strategy_{name_lower}_long'] = signal_arrays['long']
                     df[f'strategy_{name_lower}_short'] = signal_arrays['short']
                     df[f'strategy_{name_lower}_hold'] = signal_arrays['hold']
-                    print(f"    Completed: {strategy_name}")
+                    self.logger.debug(f"Completed: {strategy_name}")
                 except Exception as e:
-                    print(f"    Failed: {name} - {e}")
+                    self.logger.error(f"Failed: {name} - {e}")
                     name_lower = name.lower()
                     df[f'strategy_{name_lower}_hold'] = 1.0
 
@@ -867,7 +877,7 @@ class DataManager:
                 ]
                 # Check if any NaN remains
                 if df[cols].isna().any().any():
-                    print(f"  Warning: Found NaN in {strategy_name} signals - setting to HOLD")
+                    self.logger.warning(f"Found NaN in {strategy_name} signals - setting to HOLD")
                     df[f'strategy_{name_lower}_flat'] = df[f'strategy_{name_lower}_flat'].fillna(0.0)
                     df[f'strategy_{name_lower}_long'] = df[f'strategy_{name_lower}_long'].fillna(0.0)
                     df[f'strategy_{name_lower}_short'] = df[f'strategy_{name_lower}_short'].fillna(0.0)
@@ -901,15 +911,15 @@ class DataManager:
             strategy_list = config.STRATEGY_LIST
 
         if not strategy_list:
-            print("  No strategies requested")
+            self.logger.debug("No strategies requested")
             return df
 
-        print(f"  Requested strategies: {', '.join(strategy_list)}")
+        self.logger.debug(f"Requested strategies: {', '.join(strategy_list)}")
 
         # Detect existing strategies
         existing = self._detect_existing_strategies(df)
         if existing:
-            print(f"  Existing strategies: {', '.join(existing)}")
+            self.logger.debug(f"Existing strategies: {', '.join(existing)}")
 
         # Filter strategies to execute
         to_execute = self._filter_strategies_to_execute(
@@ -917,10 +927,10 @@ class DataManager:
         )
 
         if not to_execute:
-            print("  All strategies already exist and are valid")
+            self.logger.debug("All strategies already exist and are valid")
             return df
 
-        print(f"  Executing {len(to_execute)} strategy(s): {', '.join(to_execute)}")
+        self.logger.info(f"Executing {len(to_execute)} strategy(s): {', '.join(to_execute)}")
 
         # Execute strategies
         df = self._execute_strategies_parallel(df, to_execute)
@@ -1070,27 +1080,27 @@ class DataManager:
                     self.logger.warning("Date range insufficient. Falling back to raw data...")
 
         # STEP B: Fallback to raw data + full processing
-        print("\n=== Phase 1: Downloading data ===")
+        self.logger.info("=== Phase 1: Downloading data ===")
         raw_path = self.storage_path / "training_data" / "raw" / self._get_storage_filename()
         if raw_path.exists():
-            print(f"[INFO] Found existing Raw Data at {raw_path}. Checking for gaps...")
+            self.logger.info(f"Found existing raw data at {raw_path.name} - checking for gaps")
 
         df = self.get_or_download_data(start_date, end_date, force_redownload)
-        print(f"Downloaded {len(df)} rows")
+        self.logger.info(f"Downloaded {len(df)} rows")
 
-        print("\n=== Phase 2: Adding technical indicators ===")
+        self.logger.info("=== Phase 2: Adding technical indicators ===")
         df = self.add_base_features(df)
-        print(f"Added {len(config.INDICATORS)} indicators")
+        self.logger.info(f"Added {len(config.INDICATORS)} indicators")
 
         if config.ENABLE_STRATEGIES and strategy_list:
-            print("\n=== Phase 3: Executing strategies ===")
+            self.logger.info("=== Phase 3: Executing strategies ===")
             df = self.add_strategy_signals(df, strategy_list)
             n_strategies = len([col for col in df.columns if col.startswith('strategy_')]) // 4
-            print(f"Added signals from {n_strategies} strategy(s)")
+            self.logger.info(f"Added signals from {n_strategies} strategy(s)")
 
-        print("\n=== Phase 4: Validating and cleaning ===")
+        self.logger.info("=== Phase 4: Validating and cleaning ===")
         df = self.validate_and_clean(df)
-        print(f"Final shape: {df.shape}")
+        self.logger.info(f"Final shape: {df.shape}")
 
         # STEP C: Save processed data for future use
         if config.USE_PREPROCESSED_DATA:
@@ -1103,7 +1113,8 @@ class DataManager:
         self,
         start_date: str,
         end_date: str,
-        strategy_list: List[str] = None
+        strategy_list: List[str] = None,
+        context: str = ""
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Complete pipeline: download -> features -> strategies -> arrays
@@ -1112,19 +1123,24 @@ class DataManager:
             start_date: Start date "YYYY-MM-DD"
             end_date: End date "YYYY-MM-DD"
             strategy_list: List of strategy names (default: config.STRATEGY_LIST)
+            context: Optional context label (e.g., "Training", "Backtest") for logging
 
         Returns:
             Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
         """
         df = self.get_processed_data(start_date, end_date, strategy_list)
 
-        print("\n=== Phase 5: Converting to arrays ===")
+        prefix = f"[{context}] " if context else ""
+        self.logger.info(f"{prefix}=== Phase 5: Converting to arrays ===")
         arrays = self.to_arrays(df)
         price_array, tech_array, turbulence_array, signal_array, datetime_array = arrays
-        print(f"  Price array shape: {price_array.shape} (OHLCV)")
-        print(f"  Tech array shape: {tech_array.shape} (indicators only)")
-        print(f"  Turbulence array shape: {turbulence_array.shape} (turbulence + VIX)")
-        print(f"  Signal array shape: {signal_array.shape} (strategy signals)")
-        print(f"  Datetime array: {datetime_array.shape[0]} timestamps (date-time info)")
+        self.logger.info(
+            f"Array shapes:\n"
+            f"  Price: {price_array.shape} (OHLCV)\n"
+            f"  Tech: {tech_array.shape} (indicators)\n"
+            f"  Turbulence: {turbulence_array.shape}\n"
+            f"  Signal: {signal_array.shape}\n"
+            f"  Datetime: {datetime_array.shape[0]} timestamps"
+        )
 
         return arrays

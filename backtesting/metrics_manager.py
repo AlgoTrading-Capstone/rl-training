@@ -419,7 +419,7 @@ def _compute_trade_metrics(trades_df):
     # ----------------------------------------------------
     if "open_timestamp" in trades_df.columns and "close_timestamp" in trades_df.columns:
         try:
-            # CRITICAL FIX: Add format specification to avoid ambiguous parsing
+            #Add format specification to avoid ambiguous parsing
             # Timestamps in trades.csv are ISO format (YYYY-MM-DD HH:MM:SS)
             open_ts = pd.to_datetime(trades_df["open_timestamp"], format="ISO8601")
             close_ts = pd.to_datetime(trades_df["close_timestamp"], format="ISO8601")

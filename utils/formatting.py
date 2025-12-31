@@ -7,6 +7,8 @@ for presentation; these helpers only return strings.
 
 from __future__ import annotations # For type hinting of str | None
 
+from datetime import datetime
+
 import config
 
 
@@ -28,6 +30,39 @@ class Formatter:
             return f"{seconds/60:.1f}m"
         else:
             return f"{seconds/3600:.1f}h"
+
+    @staticmethod
+    def format_date_range_duration(start_dt: datetime, end_dt: datetime) -> str:
+        """
+        Format date range duration with accurate month calculation.
+
+        Uses calendar-based month calculation instead of days/30 approximation.
+
+        Args:
+            start_dt: Start datetime
+            end_dt: End datetime
+
+        Returns:
+            Formatted string: "X days (Y months)" or "X days (~Y months)" for partial months
+
+        Examples:
+            365 days (12 months)
+            30 days (1 month)
+            14 days (~0 months)
+        """
+        duration_days = (end_dt - start_dt).days
+
+        # Calculate accurate months using calendar arithmetic
+        # Based on plot_runner.py implementation
+        n_months = (end_dt.year - start_dt.year) * 12 + (end_dt.month - start_dt.month)
+
+        # Add ~ prefix for partial months (less than 30 days)
+        month_prefix = "~" if duration_days < 30 else ""
+
+        # Pluralization
+        month_word = "month" if n_months == 1 else "months"
+
+        return f"{duration_days} days ({month_prefix}{n_months} {month_word})"
 
     @staticmethod
     def list_format(items: list, bullet: str = "•") -> str:

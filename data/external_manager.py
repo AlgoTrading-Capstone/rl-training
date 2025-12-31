@@ -101,7 +101,38 @@ class ExternalDataManager:
             try:
                 self.logger.debug(f"Loading {ticker} from cache: {local_path}")
                 df = pd.read_csv(local_path)
-                df['Date'] = pd.to_datetime(df['Date'], format="ISO8601", utc=True)
+
+                # Strict validation with detailed error reporting
+                try:
+                    df['Date'] = pd.to_datetime(df['Date'], format="ISO8601", utc=True)
+                except (ValueError, TypeError) as date_error:
+                    # Identify problematic rows using coerce mode
+                    self.logger.warning(f"Strict ISO8601 parsing failed for {ticker}: {date_error}")
+                    self.logger.info("Identifying malformed date entries...")
+
+                    # Parse with coerce to find invalid entries
+                    df['Date_parsed'] = pd.to_datetime(df['Date'], format="ISO8601", utc=True, errors='coerce')
+
+                    # Find rows with NaT (invalid dates)
+                    invalid_mask = df['Date_parsed'].isna()
+                    invalid_rows = df[invalid_mask]
+
+                    if not invalid_rows.empty:
+                        self.logger.error(f"Found {len(invalid_rows)} invalid date entries in {ticker} cache:")
+                        for idx, row in invalid_rows.head(10).iterrows():  # Log first 10 invalid rows
+                            self.logger.error(f"  Row {idx}: Date='{row['Date']}'")
+                        if len(invalid_rows) > 10:
+                            self.logger.error(f"  ... and {len(invalid_rows) - 10} more invalid rows")
+
+                        # Remove invalid rows and continue with valid data
+                        df = df[~invalid_mask].copy()
+                        df['Date'] = df['Date_parsed']
+                        df.drop(columns=['Date_parsed'], inplace=True)
+                        self.logger.warning(f"Removed {len(invalid_rows)} invalid rows. Continuing with {len(df)} valid entries.")
+                    else:
+                        # No invalid rows found, but parsing still failed - reraise
+                        raise
+
                 df = df.set_index('Date').sort_index()
                 # Check if cache is recent (optional optimization for later)
                 return df.rename(columns={'Close': 'price'})[['price']]
