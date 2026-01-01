@@ -7,8 +7,6 @@ This allows configuration-driven strategy selection without code changes.
 
 from typing import Dict, Type, List
 from strategies.base_strategy import BaseStrategy
-from strategies.awesome_macd import AwesomeMacd
-from strategies.bband_rsi import BbandRsi
 from strategies.ott_strategy import OTTStrategy
 from strategies.supertrend_strategy import SupertrendStrategy
 from strategies.volatility_system import VolatilitySystem
@@ -22,8 +20,6 @@ class StrategyRegistry:
 
     # Map strategy names to classes
     _STRATEGIES: Dict[str, Type[BaseStrategy]] = {
-        "AwesomeMacd": AwesomeMacd,
-        "BbandRsi": BbandRsi,
         "OTTStrategy": OTTStrategy,
         "SupertrendStrategy": SupertrendStrategy,
         "VolatilitySystem": VolatilitySystem,

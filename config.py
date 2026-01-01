@@ -64,7 +64,7 @@ EXPOSURE_DEADZONE = 0.10  # 10% change in target exposure
 
 # Hard cap on absolute BTC position size (long or short).
 # Prevents the agent from taking excessive exposure, even when leverage is available.
-MAX_POSITION_BTC = 1.0
+MAX_POSITION_BTC = 18.0
 
 # Transaction fee applied to each executed MARKET (taker) order (as a fraction).
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
@@ -179,12 +179,10 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    "AwesomeMacd",         # Momentum strategy using MACD + Awesome Oscillator
-    "BbandRsi",            # Mean-reversion using Bollinger Bands + RSI
     "OTTStrategy",         # Optimized Trend Tracker using CMO-based EMA
     "SupertrendStrategy",  # Triple Supertrend with optimized parameters
     "VolatilitySystem"     # ATR-based volatility breakout system
-]  # Empty by default - configure which strategies to enable
+]
 
 # Maximum number of parallel workers for strategy signal processing
 # None = use half of available CPU cores

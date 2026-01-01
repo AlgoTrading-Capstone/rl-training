@@ -2,6 +2,7 @@
 Volatility System Strategy
 
 Adapted from Freqtrade version based on https://www.tradingview.com/script/3hhs0XbR/
+Ferqtrade strategy link:https://github.com/freqtrade/freqtrade-strategies/blob/main/user_data/strategies/futures/VolatilitySystem.py
 
 Logic:
     - Resample candles into 3h blocks
@@ -35,7 +36,7 @@ class VolatilitySystem(BaseStrategy):
             name="VolatilitySystem",
             description="Volatility breakout system based on ATR and candle movement.",
             timeframe="1h",
-            lookback_hours=66  # 14 * 3 + 24 buffer
+            lookback_hours=100  # 14 * 3 = 42h for ATR + buffer for 3h resampling stability
         )
 
     def _calculate_volatility_indicators(self, df: DataFrame) -> DataFrame:
@@ -59,7 +60,17 @@ class VolatilitySystem(BaseStrategy):
     def _calculate_indicators(self, df: DataFrame) -> DataFrame:
         """Reproduce populate_indicators() logic from Freqtrade version."""
         resample_int = 60 * 3  # 3 hours in minutes
+
+        # Resample to 3h timeframe
         resampled = resample_to_interval(df, resample_int)
+
+        # Ensure resampled data has sufficient rows for ATR calculation
+        if len(resampled) < 15:  # ATR(14) needs at least 15 candles
+            # Return df with NaN indicators - signal generation will return HOLD
+            df["atr"] = pd.NA
+            df["close_change"] = pd.NA
+            df["abs_close_change"] = pd.NA
+            return df
 
         # Calculate indicators on resampled data
         resampled = self._calculate_volatility_indicators(resampled)

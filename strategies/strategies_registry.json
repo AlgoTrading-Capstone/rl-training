@@ -19,19 +19,5 @@
     "class_name": "SupertrendStrategy",
     "timeframe": "1h",
     "lookback_hours": 124
-  },
-  "BbandRsi": {
-    "enabled": true,
-    "module": "strategies.bband_rsi",
-    "class_name": "BbandRsi",
-    "timeframe": "1h",
-    "lookback_hours": 40
-  },
-  "AwesomeMacd": {
-    "enabled": true,
-    "module": "strategies.awesome_macd",
-    "class_name": "AwesomeMacd",
-    "timeframe": "1h",
-    "lookback_hours": 100
   }
 }
