@@ -19,5 +19,12 @@
     "class_name": "SupertrendStrategy",
     "timeframe": "1h",
     "lookback_hours": 124
+  },
+  "SpecialKStrategy": {
+    "enabled": true,
+    "module": "strategies.special_k_strategy",
+    "class_name": "SpecialKStrategy",
+    "timeframe": "1D",
+    "lookback_hours": 19776
   }
 }
