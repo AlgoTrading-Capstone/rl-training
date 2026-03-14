@@ -40,5 +40,12 @@
     "class_name": "NewTottStrategy",
     "timeframe": "15m",
     "lookback_hours": 13
+  },
+  "RudyBreakoutMomentumV2Strategy": {
+    "enabled": true,
+    "module": "strategies.rudy_breakout_momentum_v2_strategy",
+    "class_name": "RudyBreakoutMomentumV2Strategy",
+    "timeframe": "1D",
+    "lookback_hours": 3024
   }
 }
