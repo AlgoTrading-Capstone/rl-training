@@ -26,5 +26,19 @@
     "class_name": "SpecialKStrategy",
     "timeframe": "1D",
     "lookback_hours": 19776
+  },
+  "KamaTrendStrategy": {
+    "enabled": true,
+    "module": "strategies.kama_trend_strategy",
+    "class_name": "KamaTrendStrategy",
+    "timeframe": "1h",
+    "lookback_hours": 100
+  },
+  "NewTottStrategy": {
+    "enabled": true,
+    "module": "strategies.new_tott_strategy",
+    "class_name": "NewTottStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 13
   }
 }
