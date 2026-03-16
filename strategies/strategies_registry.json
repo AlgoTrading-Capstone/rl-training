@@ -47,5 +47,12 @@
     "class_name": "RudyBreakoutMomentumV2Strategy",
     "timeframe": "1D",
     "lookback_hours": 3024
+  },
+  "BjorgumDoubleTapStrategy": {
+    "enabled": true,
+    "module": "strategies.bjorgum_double_tap_strategy",
+    "class_name": "BjorgumDoubleTapStrategy",
+    "timeframe": "4h",
+    "lookback_hours": null
   }
 }
