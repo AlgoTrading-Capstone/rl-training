@@ -179,9 +179,15 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    "OTTStrategy",         # Optimized Trend Tracker using CMO-based EMA
-    "SupertrendStrategy",  # Triple Supertrend with optimized parameters
-    "VolatilitySystem"     # ATR-based volatility breakout system
+    "OTTStrategy",                                    # Optimized Trend Tracker using CMO-based EMA
+    "SupertrendStrategy",                             # Triple Supertrend with optimized parameters
+    "VolatilitySystem",                               # ATR-based volatility breakout system
+    "BjorgumDoubleTapStrategy",                       # Double top/bottom pattern detection (4h)
+    "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
+    "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
+    "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
+    "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
+    # "SpecialKStrategy",                             # Martin Pring Special K oscillator (1D) — requires ~3.2 years of data (lookback_hours=19776). Enable when training on a large enough dataset.
 ]
 
 # Maximum number of parallel workers for strategy signal processing

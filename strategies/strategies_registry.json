@@ -53,7 +53,7 @@
     "module": "strategies.bjorgum_double_tap_strategy",
     "class_name": "BjorgumDoubleTapStrategy",
     "timeframe": "4h",
-    "lookback_hours": null
+    "lookback_hours": 1200
   },
   "EvasiveSuperTrendStrategySourceSelectStrategy": {
     "enabled": true,

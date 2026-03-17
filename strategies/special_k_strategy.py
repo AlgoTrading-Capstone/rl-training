@@ -24,7 +24,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from src.base_strategy import BaseStrategy, StrategyRecommendation, SignalType
+from strategies.base_strategy import BaseStrategy, StrategyRecommendation, SignalType
 
 # ---------------------------------------------------------------------------
 # Special K component definition
