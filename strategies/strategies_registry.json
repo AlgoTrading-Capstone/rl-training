@@ -61,5 +61,12 @@
     "class_name": "EvasiveSuperTrendStrategySourceSelectStrategy",
     "timeframe": "1h",
     "lookback_hours": 50
+  },
+  "TrendmasterPro23WithAlertsStrategy": {
+    "enabled": true,
+    "module": "strategies.trendmaster_pro_2_3_with_alerts_strategy",
+    "class_name": "TrendmasterPro23WithAlertsStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 50
   }
 }

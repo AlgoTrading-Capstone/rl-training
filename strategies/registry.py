@@ -16,6 +16,7 @@ from strategies.kama_trend_strategy import KamaTrendStrategy
 from strategies.new_tott_strategy import NewTottStrategy
 from strategies.rudy_breakout_momentum_v2_strategy import RudyBreakoutMomentumV2Strategy
 from strategies.special_k_strategy import SpecialKStrategy
+from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23WithAlertsStrategy
 
 
 class StrategyRegistry:
@@ -35,6 +36,7 @@ class StrategyRegistry:
         "NewTottStrategy": NewTottStrategy,
         "RudyBreakoutMomentumV2Strategy": RudyBreakoutMomentumV2Strategy,
         "SpecialKStrategy": SpecialKStrategy,
+            "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
     }
 
     @classmethod

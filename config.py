@@ -188,6 +188,7 @@ STRATEGY_LIST = [
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
     "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
     # "SpecialKStrategy",                             # Martin Pring Special K oscillator (1D) — requires ~3.2 years of data (lookback_hours=19776). Enable when training on a large enough dataset.
+    "TrendmasterPro23WithAlertsStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
