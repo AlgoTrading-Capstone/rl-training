@@ -103,7 +103,7 @@ class SpecialKStrategy(BaseStrategy):
     + 100 (signal SMA) = 1160. We use 1160 as the conservative min_bars guard.
     """
 
-    MIN_BARS: int = 1160
+    MIN_CANDLES_REQUIRED: int = 1160
 
     def __init__(
         self,
@@ -118,7 +118,7 @@ class SpecialKStrategy(BaseStrategy):
                 "Martin Pring's Special K momentum strategy using weighted smoothed "
                 "ROC components across 15 time horizons with zero-line and slope filters"
             ),
-            timeframe="1D",
+            timeframe="1d",
             lookback_hours=19776,
         )
         self.len1 = len1
@@ -139,7 +139,7 @@ class SpecialKStrategy(BaseStrategy):
         -------
         StrategyRecommendation with LONG, SHORT, FLAT, or HOLD signal.
         """
-        if len(df) < self.MIN_BARS:
+        if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         src = df["close"].reset_index(drop=True)

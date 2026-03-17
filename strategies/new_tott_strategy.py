@@ -126,7 +126,7 @@ class NewTottStrategy(BaseStrategy):
 
     # Minimum candles required before the first meaningful signal can be emitted.
     # VAR MA needs ~40 bars to stabilise; the rolling-9 sum needs 9 more.
-    MIN_BARS: int = 50
+    MIN_CANDLES_REQUIRED: int = 50
 
     def __init__(
         self,
@@ -160,7 +160,7 @@ class NewTottStrategy(BaseStrategy):
         -------
         StrategyRecommendation with LONG, SHORT, or HOLD signal.
         """
-        if len(df) < self.MIN_BARS:
+        if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         src = df["close"].reset_index(drop=True)

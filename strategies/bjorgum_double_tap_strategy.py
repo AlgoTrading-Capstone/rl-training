@@ -63,7 +63,7 @@ class BjorgumDoubleTapStrategy(BaseStrategy):
 
     # Minimum candles before signals can be evaluated.
     # Needs len (50) for pivot detection + ATR (14) warm-up + several extra pivots.
-    MIN_BARS: int = 120
+    MIN_CANDLES_REQUIRED: int = 120
 
     def __init__(
         self,
@@ -210,7 +210,7 @@ class BjorgumDoubleTapStrategy(BaseStrategy):
         -------
         StrategyRecommendation with LONG, SHORT, or HOLD signal.
         """
-        if len(df) < self.MIN_BARS:
+        if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         df = df.reset_index(drop=True)

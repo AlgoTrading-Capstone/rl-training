@@ -24,7 +24,7 @@
     "enabled": true,
     "module": "strategies.special_k_strategy",
     "class_name": "SpecialKStrategy",
-    "timeframe": "1D",
+    "timeframe": "1d",
     "lookback_hours": 19776
   },
   "KamaTrendStrategy": {
@@ -45,7 +45,7 @@
     "enabled": true,
     "module": "strategies.rudy_breakout_momentum_v2_strategy",
     "class_name": "RudyBreakoutMomentumV2Strategy",
-    "timeframe": "1D",
+    "timeframe": "1d",
     "lookback_hours": 3024
   },
   "BjorgumDoubleTapStrategy": {

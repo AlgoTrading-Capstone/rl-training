@@ -45,7 +45,7 @@ class RudyBreakoutMomentumV2Strategy(BaseStrategy):
 
     # Minimum candles needed before the first valid signal.
     # Covers 126-bar rolling high + EMA50 warmup + RSI14 warmup + buffer.
-    MIN_BARS: int = 160
+    MIN_CANDLES_REQUIRED: int = 160
 
     def __init__(
         self,
@@ -61,7 +61,7 @@ class RudyBreakoutMomentumV2Strategy(BaseStrategy):
                 "EMA trend confirmation (EMA21 > EMA50) and RSI in the 40–80 range. "
                 "Exits on a close below EMA21 (trend break)."
             ),
-            timeframe="1D",
+            timeframe="1d",
             lookback_hours=3024,
         )
         self.lookback = lookback
@@ -82,7 +82,7 @@ class RudyBreakoutMomentumV2Strategy(BaseStrategy):
         -------
         StrategyRecommendation with LONG, FLAT, or HOLD signal.
         """
-        if len(df) < self.MIN_BARS:
+        if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         close = df["close"].reset_index(drop=True)

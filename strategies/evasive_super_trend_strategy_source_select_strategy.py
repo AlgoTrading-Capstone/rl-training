@@ -60,7 +60,7 @@ class EvasiveSuperTrendStrategySourceSelectStrategy(BaseStrategy):
 
     # Minimum bars before signals can be evaluated.
     # 3 × ATR period (10) = 30 to allow ATR to converge.
-    MIN_BARS: int = 30
+    MIN_CANDLES_REQUIRED: int = 30
 
     def __init__(
         self,
@@ -176,7 +176,7 @@ class EvasiveSuperTrendStrategySourceSelectStrategy(BaseStrategy):
         -------
         StrategyRecommendation with LONG, SHORT, or HOLD signal.
         """
-        if len(df) < self.MIN_BARS:
+        if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         df = df.reset_index(drop=True)
