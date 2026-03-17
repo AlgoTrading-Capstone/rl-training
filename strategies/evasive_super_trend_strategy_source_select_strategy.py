@@ -58,10 +58,6 @@ class EvasiveSuperTrendStrategySourceSelectStrategy(BaseStrategy):
          - If trend == -1 and close[i] > st_line → trend = +1, st_line = lower_base
     """
 
-    # Minimum bars before signals can be evaluated.
-    # 3 × ATR period (10) = 30 to allow ATR to converge.
-    MIN_CANDLES_REQUIRED: int = 30
-
     def __init__(
         self,
         length_input: int = 10,
@@ -84,6 +80,8 @@ class EvasiveSuperTrendStrategySourceSelectStrategy(BaseStrategy):
         self.multiplier_input = multiplier_input
         self.threshold_input = threshold_input
         self.alpha_input = alpha_input
+        # 3 × ATR period to allow ATR to converge
+        self.MIN_CANDLES_REQUIRED = 3 * self.length_input
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -104,13 +104,13 @@ class KamaTrendStrategy(BaseStrategy):
         self.slow_kama_fast = slow_kama_fast
         self.slow_kama_slow = slow_kama_slow
         self.atr_len = atr_len
+        # 3 × slowest recursive period to allow KAMA and ATR to converge
+        self.MIN_CANDLES_REQUIRED = 3 * max(self.er_len, self.slow_kama_slow, self.atr_len)
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
         close = df["close"].to_numpy(dtype=float)
 
-        # Warmup guard: 3 × slowest recursive period
-        min_bars = 3 * max(self.er_len, self.slow_kama_slow, self.atr_len)
-        if len(close) < min_bars:
+        if len(close) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
         # ---- Indicators ------------------------------------------------

@@ -28,9 +28,6 @@ class OTTStrategy(BaseStrategy):
     Uses CMO-based smoothing to detect trend changes.
     """
 
-    # Rolling window is 9 periods, plus initialization buffer
-    MIN_CANDLES_REQUIRED = 30
-
     def __init__(self):
         super().__init__(
             name="OTTStrategy",
@@ -38,6 +35,7 @@ class OTTStrategy(BaseStrategy):
             timeframe="1h",
             lookback_hours=50  # 30 candles + buffer for 1h timeframe
         )
+        self.MIN_CANDLES_REQUIRED = 30
 
     def _calculate_ott(self, df: DataFrame) -> DataFrame:
         """

@@ -28,9 +28,6 @@ class VolatilitySystem(BaseStrategy):
     Detects breakout conditions using ATR-based volatility threshold.
     """
 
-    # ATR(14) on 3h data needs: 14 * 3 + buffer = 52 candles minimum
-    MIN_CANDLES_REQUIRED = 52
-
     def __init__(self):
         super().__init__(
             name="VolatilitySystem",
@@ -38,6 +35,7 @@ class VolatilitySystem(BaseStrategy):
             timeframe="1h",
             lookback_hours=100  # 14 * 3 = 42h for ATR + buffer for 3h resampling stability
         )
+        self.MIN_CANDLES_REQUIRED = 52
 
     def _calculate_volatility_indicators(self, df: DataFrame) -> DataFrame:
         """

@@ -29,10 +29,6 @@ class SupertrendStrategy(BaseStrategy):
     Uses 3 Supertrend indicators with optimized parameters for both LONG and SHORT signals.
     """
 
-    # Supertrend needs period candles to initialize, longest period is 9
-    # Original startup_candle_count was 199, using conservative 100
-    MIN_CANDLES_REQUIRED = 100
-
     # Hyperopt-optimized BUY parameters for LONG signals
     BUY_M1 = 4
     BUY_M2 = 7
@@ -57,6 +53,7 @@ class SupertrendStrategy(BaseStrategy):
             timeframe="1h",
             lookback_hours=124  # 100 candles + 24h buffer for 1h timeframe
         )
+        self.MIN_CANDLES_REQUIRED = 100
 
     def _supertrend_vectorized(self, df: DataFrame, multiplier: int, period: int) -> DataFrame:
         """

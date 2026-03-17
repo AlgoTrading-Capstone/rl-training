@@ -124,10 +124,6 @@ class NewTottStrategy(BaseStrategy):
     execution layer.
     """
 
-    # Minimum candles required before the first meaningful signal can be emitted.
-    # VAR MA needs ~40 bars to stabilise; the rolling-9 sum needs 9 more.
-    MIN_CANDLES_REQUIRED: int = 50
-
     def __init__(
         self,
         length: int = 40,
@@ -146,6 +142,8 @@ class NewTottStrategy(BaseStrategy):
         self.length = length
         self.percent = percent
         self.coeff = coeff
+        # VAR MA needs ~length bars to stabilise; 10-bar rolling sum needs 10 more
+        self.MIN_CANDLES_REQUIRED = self.length + 10
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
         """Evaluate the strategy for the current bar.

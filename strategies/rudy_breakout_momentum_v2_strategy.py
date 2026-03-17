@@ -45,8 +45,6 @@ class RudyBreakoutMomentumV2Strategy(BaseStrategy):
 
     # Minimum candles needed before the first valid signal.
     # Covers 126-bar rolling high + EMA50 warmup + RSI14 warmup + buffer.
-    MIN_CANDLES_REQUIRED: int = 160
-
     def __init__(
         self,
         lookback: int = 126,
@@ -68,6 +66,8 @@ class RudyBreakoutMomentumV2Strategy(BaseStrategy):
         self.ema_fast = ema_fast
         self.ema_slow = ema_slow
         self.rsi_period = rsi_period
+        # Rolling high lookback + EMA fast warmup + RSI warmup
+        self.MIN_CANDLES_REQUIRED = self.lookback + self.ema_fast + self.rsi_period - 1
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
         """Evaluate the strategy for the current bar.

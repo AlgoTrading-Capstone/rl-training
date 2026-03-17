@@ -103,8 +103,6 @@ class SpecialKStrategy(BaseStrategy):
     + 100 (signal SMA) = 1160. We use 1160 as the conservative min_bars guard.
     """
 
-    MIN_CANDLES_REQUIRED: int = 1160
-
     def __init__(
         self,
         len1: int = 100,
@@ -125,6 +123,8 @@ class SpecialKStrategy(BaseStrategy):
         self.use_zero_filter = use_zero_filter
         self.use_slope_filter = use_slope_filter
         self.slope_len = slope_len
+        # Longest ROC period (530) + longest SMA period (530) + signal SMA (len1)
+        self.MIN_CANDLES_REQUIRED = 1060 + self.len1
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
         """Evaluate the Special K Strategy for the current bar.
