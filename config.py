@@ -179,9 +179,7 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    "OTTStrategy",                                    # Optimized Trend Tracker using CMO-based EMA
     "SupertrendStrategy",                             # Triple Supertrend with optimized parameters
-    "VolatilitySystem",                               # ATR-based volatility breakout system
     "BjorgumDoubleTapStrategy",                       # Double top/bottom pattern detection (4h)
     "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)

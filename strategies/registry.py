@@ -7,9 +7,7 @@ This allows configuration-driven strategy selection without code changes.
 
 from typing import Dict, Type, List
 from strategies.base_strategy import BaseStrategy
-from strategies.ott_strategy import OTTStrategy
 from strategies.supertrend_strategy import SupertrendStrategy
-from strategies.volatility_system import VolatilitySystem
 from strategies.bjorgum_double_tap_strategy import BjorgumDoubleTapStrategy
 from strategies.evasive_super_trend_strategy_source_select_strategy import EvasiveSuperTrendStrategySourceSelectStrategy
 from strategies.kama_trend_strategy import KamaTrendStrategy
@@ -28,9 +26,7 @@ class StrategyRegistry:
 
     # Map strategy names to classes
     _STRATEGIES: Dict[str, Type[BaseStrategy]] = {
-        "OTTStrategy": OTTStrategy,
         "SupertrendStrategy": SupertrendStrategy,
-        "VolatilitySystem": VolatilitySystem,
         "BjorgumDoubleTapStrategy": BjorgumDoubleTapStrategy,
         "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
         "KamaTrendStrategy": KamaTrendStrategy,
