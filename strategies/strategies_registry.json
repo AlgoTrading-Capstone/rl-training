@@ -61,5 +61,12 @@
     "class_name": "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "timeframe": "15m",
     "lookback_hours": 50
+  },
+  "ThreeCommasBotStrategy": {
+    "enabled": true,
+    "module": "strategies.threecommas_bot_strategy",
+    "class_name": "ThreeCommasBotStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 13
   }
 }

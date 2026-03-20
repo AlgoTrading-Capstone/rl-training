@@ -188,6 +188,7 @@ STRATEGY_LIST = [
     # "SpecialKStrategy",                             # Martin Pring Special K oscillator (1D) — requires ~3.2 years of data (lookback_hours=19776). Enable when training on a large enough dataset.
     "TrendmasterPro23WithAlertsStrategy",
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
+    "ThreeCommasBotStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
