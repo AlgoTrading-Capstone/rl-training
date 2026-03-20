@@ -17,6 +17,7 @@ from strategies.new_tott_strategy import NewTottStrategy
 from strategies.rudy_breakout_momentum_v2_strategy import RudyBreakoutMomentumV2Strategy
 from strategies.special_k_strategy import SpecialKStrategy
 from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23WithAlertsStrategy
+from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy import AllDayFuturesScalperEmaTrendCrossAtrBrackets
 
 
 class StrategyRegistry:
@@ -37,6 +38,7 @@ class StrategyRegistry:
         "RudyBreakoutMomentumV2Strategy": RudyBreakoutMomentumV2Strategy,
         "SpecialKStrategy": SpecialKStrategy,
             "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
+            "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
     }
 
     @classmethod

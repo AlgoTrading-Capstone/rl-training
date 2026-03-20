@@ -68,5 +68,12 @@
     "class_name": "TrendmasterPro23WithAlertsStrategy",
     "timeframe": "15m",
     "lookback_hours": 50
+  },
+  "AllDayFuturesScalperEmaTrendCrossAtrBrackets": {
+    "enabled": true,
+    "module": "strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy",
+    "class_name": "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
+    "timeframe": "15m",
+    "lookback_hours": 50
   }
 }
