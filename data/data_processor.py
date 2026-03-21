@@ -264,18 +264,6 @@ class CcxtProcessor:
         initial_rows = len(df)
 
         # Remove duplicates
-        df = df.drop_duplicates(subset=['date', 'tic'])
-
-        # Sort by date and ticker
-        df = df.sort_values(['date', 'tic']).reset_index(drop=True)
-
-        # Handle missing values by forward-fill then backward-fill
-        df = df.ffill().bfill()
-
-        # Ensure no negative prices or volumes
-        price_cols = ['open', 'high', 'low', 'close']
-        df[price_cols] = df[price_cols].clip(lower=0)
-        df['volume'] = df['volume'].clip(lower=0)
 
         # Validate OHLC relationships
         df = df[

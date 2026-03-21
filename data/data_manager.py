@@ -13,7 +13,7 @@ import shutil
 import time
 import multiprocessing as mp
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -247,7 +247,74 @@ class DataManager:
         # Initialize DataProcessor (wrapper with CcxtProcessor + ExternalDataManager)
         self.processor = DataProcessor(data_source=self.exchange)
 
+    # ========================================================================
+    # Warmup Calculation (prevents lookahead bias)
+    # ========================================================================
 
+    def _compute_warmup_hours(self, strategy_list: List[str] = None) -> int:
+        """
+        Compute the maximum warmup period needed (in hours) so that all
+        technical indicators and strategy signals have valid values from
+        the very first candle of the user's requested date range.
+
+        The caller should download data starting from
+        (start_date - warmup_hours) and trim back to start_date after
+        all features are computed.
+
+        Returns:
+            Warmup duration in hours (0 if no warmup needed)
+        """
+        candle_minutes = timeframe_to_minutes(self.base_timeframe)
+
+        # --- Technical indicator warmup ---
+        max_indicator_candles = max(
+            (config.INDICATOR_WARMUP_CANDLES.get(ind.lower(), 0)
+             for ind in config.INDICATORS),
+            default=0,
+        )
+
+        # Turbulence: pct_change() + rolling(window=20).std() → 21 candles
+        if config.ENABLE_TURBULENCE:
+            max_indicator_candles = max(max_indicator_candles, 21)
+
+        indicator_warmup_hours = (max_indicator_candles * candle_minutes) / 60
+
+        # --- Strategy lookback warmup ---
+        max_strategy_hours = 0
+        if config.ENABLE_STRATEGIES and strategy_list:
+            try:
+                registry = self._load_strategy_registry()
+                for name in strategy_list:
+                    if name in registry:
+                        max_strategy_hours = max(
+                            max_strategy_hours,
+                            registry[name].get("lookback_hours", 0),
+                        )
+            except Exception as e:
+                self.logger.warning(
+                    f"Could not load strategy registry for warmup calc: {e}. "
+                    f"Falling back to indicator warmup only."
+                )
+
+        total_hours = max(int(indicator_warmup_hours) + 1, max_strategy_hours)
+        return total_hours
+
+    def _compute_warmup_start_date(self, start_date: str, warmup_hours: int) -> str:
+        """
+        Subtract *warmup_hours* from *start_date* and return the result
+        as an ISO-formatted date string (YYYY-MM-DD).
+
+        Args:
+            start_date: Original start date (DD-MM-YYYY or YYYY-MM-DD)
+            warmup_hours: Hours to subtract
+
+        Returns:
+            Extended start date in YYYY-MM-DD format
+        """
+        start_iso = self.processor._convert_to_iso_date(start_date)
+        start_dt = datetime.strptime(start_iso, "%Y-%m-%d")
+        extended_dt = start_dt - timedelta(hours=warmup_hours)
+        return extended_dt.strftime("%Y-%m-%d")
 
     # ========================================================================
     # Phase 1: Smart Incremental Download
@@ -856,14 +923,15 @@ class DataManager:
                     name_lower = name.lower()
                     df[f'strategy_{name_lower}_hold'] = 1.0
 
-        # CRITICAL: Apply forward fill then backward fill after merging all strategies
-        # This ensures RL agent on 15m timeframe sees last known macro signal
-        # instead of NaN (e.g., 1h strategy signal applied to all 15m candles)
-        # Forward fill propagates signals forward in time
-        # Backward fill handles any NaN at the beginning (before first valid signal)
+        # Forward fill strategy signals so the RL agent on the 15m timeframe
+        # sees the last known macro signal instead of NaN (e.g., 1h strategy
+        # signal applied to all 15m candles within that hour).
+        # NOTE: bfill() was intentionally removed to prevent lookahead bias.
+        # Leading NaN rows are covered by the warmup data prefix which is
+        # trimmed in get_processed_data() before the data reaches the agent.
         strategy_cols = [col for col in df.columns if col.startswith('strategy_')]
         if strategy_cols:
-            df[strategy_cols] = df[strategy_cols].ffill().bfill()
+            df[strategy_cols] = df[strategy_cols].ffill()
 
             # Final safety check: replace any remaining NaN with HOLD signal
             # This should rarely happen, but ensures valid One-Hot encoding
@@ -948,7 +1016,7 @@ class DataManager:
         This uses the exact clean_data logic:
         - Remove duplicates by (date, tic)
         - Sort by date and tic
-        - Forward-fill then backward-fill missing values
+        - Forward-fill missing values (no bfill — lookahead bias prevention)
         - Clip negative prices/volumes
         - Validate OHLC relationships
 
@@ -1080,13 +1148,30 @@ class DataManager:
                     self.logger.warning("Date range insufficient. Falling back to raw data...")
 
         # STEP B: Fallback to raw data + full processing
+        # ----------------------------------------------------------------
+        # Warmup: Download extra historical data BEFORE user's start_date
+        # so that indicators and strategies have valid values from the
+        # very first candle of the user's requested range. The warmup
+        # prefix is trimmed after all features are computed.
+        # ----------------------------------------------------------------
+        warmup_hours = self._compute_warmup_hours(strategy_list)
+        if warmup_hours > 0:
+            extended_start = self._compute_warmup_start_date(start_date, warmup_hours)
+            warmup_days = warmup_hours / 24
+            self.logger.info(
+                f"Warmup: fetching {warmup_hours}h ({warmup_days:.0f}d) of extra data "
+                f"before {start_date} (extended start: {extended_start})"
+            )
+        else:
+            extended_start = start_date
+
         self.logger.info("=== Phase 1: Downloading data ===")
         raw_path = self.storage_path / "training_data" / "raw" / self._get_storage_filename()
         if raw_path.exists():
             self.logger.info(f"Found existing raw data at {raw_path.name} - checking for gaps")
 
-        df = self.get_or_download_data(start_date, end_date, force_redownload)
-        self.logger.info(f"Downloaded {len(df)} rows")
+        df = self.get_or_download_data(extended_start, end_date, force_redownload)
+        self.logger.info(f"Downloaded {len(df)} rows (includes {warmup_hours}h warmup prefix)")
 
         self.logger.info("=== Phase 2: Adding technical indicators ===")
         df = self.add_base_features(df)
@@ -1100,6 +1185,21 @@ class DataManager:
 
         self.logger.info("=== Phase 4: Validating and cleaning ===")
         df = self.validate_and_clean(df)
+
+        # ----------------------------------------------------------------
+        # Trim warmup prefix: keep only the user's requested date range.
+        # All indicators and strategies now have valid (non-NaN) values
+        # from the very first candle of start_date.
+        # ----------------------------------------------------------------
+        if warmup_hours > 0:
+            rows_before = len(df)
+            df = self._filter_date_range(df, start_date, end_date)
+            rows_trimmed = rows_before - len(df)
+            self.logger.info(
+                f"Trimmed {rows_trimmed} warmup rows → {len(df)} rows "
+                f"(training starts at {start_date})"
+            )
+
         self.logger.info(f"Final shape: {df.shape}")
 
         # STEP C: Save processed data for future use

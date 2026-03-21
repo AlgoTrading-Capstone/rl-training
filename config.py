@@ -93,7 +93,7 @@ EXCHANGE_NAME = "binance"
 TRADING_PAIR = "BTC/USDT"
 
 # Candle timeframe to fetch from the exchange.
-#Defines the resolution for both Crypto and External data.
+# Defines the resolution for both Crypto and External data.
 # 15-minute candles offer a strong balance between noise reduction and responsiveness for crypto RL tasks.
 DATA_TIMEFRAME = "15m"
 
@@ -108,6 +108,19 @@ INDICATORS = [
     "close_30_sma",  # [5] Simple Moving Average over 30 closes (short-term trend)
     "close_60_sma",  # [6] Simple Moving Average over 60 closes (mid-term trend)
 ]
+
+# Number of candles each indicator needs before producing a valid (non-NaN) value.
+# Used by DataManager to compute the warmup period when fetching extra historical data.
+# If an indicator is added/removed above, this map MUST be updated to match.
+INDICATOR_WARMUP_CANDLES = {
+    "macd": 34,
+    "boll_ub": 20,
+    "boll_lb": 20,
+    "rsi_30": 31,
+    "dx_30": 31,
+    "close_30_sma": 30,
+    "close_60_sma": 60,
+}
 
 # Turbulence calculation (market stress indicator)
 ENABLE_TURBULENCE = True
@@ -185,7 +198,6 @@ STRATEGY_LIST = [
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
     "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
-    # "SpecialKStrategy",                             # Martin Pring Special K oscillator (1D) — requires ~3.2 years of data (lookback_hours=19776). Enable when training on a large enough dataset.
     "TrendmasterPro23WithAlertsStrategy",
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "ThreeCommasBotStrategy",

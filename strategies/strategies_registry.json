@@ -6,13 +6,6 @@
     "timeframe": "1h",
     "lookback_hours": 124
   },
-  "SpecialKStrategy": {
-    "enabled": true,
-    "module": "strategies.special_k_strategy",
-    "class_name": "SpecialKStrategy",
-    "timeframe": "1d",
-    "lookback_hours": 19776
-  },
   "KamaTrendStrategy": {
     "enabled": true,
     "module": "strategies.kama_trend_strategy",
