@@ -63,6 +63,7 @@ def run_training_pipeline(
             )
             logger.exception(error_msg)  # Logs error + traceback
             raise
+
     # --------------------------------------------------------
     # STEP 3: Calculate state/action dimensions and split sizes
     # --------------------------------------------------------
@@ -277,39 +278,36 @@ def run_backtest_pipeline(
             logger.exception(error_msg)  # Logs error + traceback
             raise
 
-        # --------------------------------------------------------
-        # STEP 10: Append backtest metadata
-        # --------------------------------------------------------
-        with logger.phase("Metadata Update", 3, 3):
-            try:
-                backtest_entry = {
-                    "id": backtest_id,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "start_date": backtest_config["start_date"],
-                    "end_date": backtest_config["end_date"],
-                    "overlaps_training": backtest_config["overlaps_training"],
-                    "output_dir": f"backtests/{backtest_id}",
-                }
+    # --------------------------------------------------------
+    # STEP 10: Append backtest metadata
+    # --------------------------------------------------------
+    with logger.phase("Metadata Update", 3, 3):
+        try:
+            backtest_entry = {
+                "id": backtest_id,
+                "created_at": datetime.utcnow().isoformat(),
+                "start_date": backtest_config["start_date"],
+                "end_date": backtest_config["end_date"],
+                "overlaps_training": backtest_config["overlaps_training"],
+                "output_dir": f"backtests/{backtest_id}",
+            }
 
-                append_backtest_metadata(run_path, backtest_entry)
+            append_backtest_metadata(run_path, backtest_entry)
 
-                logger.success("Backtest metadata updated")
+            logger.success("Backtest metadata updated")
 
-            except Exception as e:
-                error_msg = Formatter.error_context(
-                    f"ERROR UPDATING BACKTEST METADATA: {e}",
-                    f"Metadata file: {run_path / 'metadata.json'}"
-                )
-                logger.exception(error_msg)  # Logs error + traceback
-                raise
+        except Exception as e:
+            error_msg = Formatter.error_context(
+                f"ERROR UPDATING BACKTEST METADATA: {e}",
+                f"Metadata file: {run_path / 'metadata.json'}"
+            )
+            logger.exception(error_msg)  # Logs error + traceback
+            raise
 
 
 def main():
     # Initialize active logger reference (before run_path is created)
     active_logger = RLLogger(run_path=None, log_level=config.LOG_LEVEL)
-    active_logger.info("=" * 60)
-    active_logger.info("RL Pipeline Execution")
-    active_logger.info("=" * 60)
 
     # --------------------------------------------------------
     # STEP 0: Initialize shared DataManager
@@ -393,13 +391,13 @@ def main():
 
             run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
 
-        active_logger.success("\n=== Session Complete ===\n")
+        active_logger.success("Session completed successfully")
 
     except KeyboardInterrupt:
-        active_logger.warning("\nExecution interrupted by user.")
+        active_logger.warning("Execution interrupted by user.")
 
     except Exception:
-        active_logger.error("\nPipeline failed. See detailed logs above.")
+        active_logger.error("Pipeline failed. See detailed logs above.")
 
 
 if __name__ == "__main__":
