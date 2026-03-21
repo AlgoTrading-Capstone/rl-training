@@ -6,6 +6,7 @@ Adapted from FinRL's DataProcessor pattern for cryptocurrency trading
 from __future__ import annotations
 
 import ccxt
+import warnings
 import numpy as np
 import pandas as pd
 import talib
@@ -253,6 +254,7 @@ class CcxtProcessor:
         pbar.close()
 
         return all_candles
+
     #TODO: this function need to be tested
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -413,6 +415,21 @@ class CcxtProcessor:
         # Technical indicators array (VIX belongs in turbulence_array, not here)
         tech_array = df[tech_indicator_list].values if tech_indicator_list else np.array([])
 
+        # Defensive check: tech_array should have no NaN after warmup trimming.
+        # If NaN survive, it indicates a data gap or missing warmup — log a
+        # warning so it doesn't silently produce misleading zeros (e.g. RSI=0).
+        if tech_indicator_list and np.isnan(tech_array).any():
+            nan_counts = np.isnan(tech_array).sum(axis=0)
+            details = ", ".join(
+                f"{name}: {int(cnt)}"
+                for name, cnt in zip(tech_indicator_list, nan_counts) if cnt > 0
+            )
+            warnings.warn(
+                f"tech_array contains NaN AFTER warmup trimming — replaced with 0.0. "
+                f"This should not happen. Per-indicator NaN counts: [{details}]"
+            )
+        tech_array = np.nan_to_num(tech_array, nan=0.0, posinf=0.0, neginf=0.0)
+
         # Turbulence array: [turbulence, vix] (both optional based on config)
         turb_cols = []
         if 'turbulence' in df.columns:
@@ -436,9 +453,6 @@ class CcxtProcessor:
         else:
             # No strategies enabled - return empty array
             signal_array = np.zeros((len(df), 0), dtype=np.float32)
-
-        # Handle NaN and Inf values in numeric arrays
-        tech_array = np.nan_to_num(tech_array, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Defensive check: turbulence_array should NEVER have NaNs at this point
         if np.isnan(turbulence_array).any():

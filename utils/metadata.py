@@ -121,6 +121,7 @@ def enrich_metadata_with_training_config(
         "max_position_btc": config.MAX_POSITION_BTC,
         "transaction_fee": config.TRANSACTION_FEE,
         "slippage_mean": getattr(config, "SLIPPAGE_MEAN", None),
+        "slippage_std": getattr(config, "SLIPPAGE_STD", None),
         "reward_function": config.REWARD_FUNCTION,
         "downside_weight": getattr(config, "DOWNSIDE_WEIGHT", None),
     }
