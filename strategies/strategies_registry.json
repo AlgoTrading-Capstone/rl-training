@@ -1,7 +1,7 @@
 {
   "SupertrendStrategy": {
     "enabled": true,
-    "module": "strategies.supertrend_strategy",
+    "module": "strategies.supertrend_legacy_strategy",
     "class_name": "SupertrendStrategy",
     "timeframe": "1h",
     "lookback_hours": 124

@@ -1,5 +1,5 @@
 """
-Supertrend Strategy
+Supertrend Legacy Strategy
 
 Adapted from Freqtrade Supertrend strategy by @juankysoriano.
 
@@ -25,7 +25,7 @@ from strategies.base_strategy import (BaseStrategy, SignalType, StrategyRecommen
 
 class SupertrendStrategy(BaseStrategy):
     """
-    Supertrend Strategy for Bitcoin trading.
+    Supertrend legacy strategy for Bitcoin trading.
     Uses 3 Supertrend indicators with optimized parameters for both LONG and SHORT signals.
     """
 
@@ -48,8 +48,8 @@ class SupertrendStrategy(BaseStrategy):
 
     def __init__(self):
         super().__init__(
-            name="SupertrendStrategy",
-            description="Triple Supertrend strategy with LONG/SHORT signals using hyperopt-optimized parameters.",
+            name="Supertrend Legacy",
+            description="Legacy triple Supertrend strategy with LONG/SHORT signals using hyperopt-optimized parameters.",
             timeframe="1h",
             lookback_hours=124  # 100 candles + 24h buffer for 1h timeframe
         )
@@ -267,7 +267,7 @@ class SupertrendStrategy(BaseStrategy):
         return SignalType.HOLD
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
-        """Execute the Supertrend Strategy logic."""
+        """Execute the Supertrend legacy strategy logic."""
 
         if df is None or len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)

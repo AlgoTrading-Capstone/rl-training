@@ -192,7 +192,7 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    "SupertrendStrategy",                             # Triple Supertrend with optimized parameters
+    "SupertrendStrategy",                             # Supertrend Legacy (pre-converter baseline)
     "BjorgumDoubleTapStrategy",                       # Double top/bottom pattern detection (4h)
     "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
