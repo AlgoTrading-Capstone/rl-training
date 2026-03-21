@@ -145,8 +145,10 @@ EXTERNAL_ASSETS = [
     }
 ]
 
-# Average slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
-SLIPPAGE_MEAN = 0.0001
+# Slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
+# Sampled per trade from a lognormal distribution: lognormal(ln(SLIPPAGE_MEAN), SLIPPAGE_STD).
+SLIPPAGE_MEAN = 0.0003
+SLIPPAGE_STD = 0.5
 
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"
