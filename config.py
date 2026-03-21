@@ -197,7 +197,6 @@ STRATEGY_LIST = [
     "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
-    "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
     "TrendmasterPro23WithAlertsStrategy",
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "ThreeCommasBotStrategy",

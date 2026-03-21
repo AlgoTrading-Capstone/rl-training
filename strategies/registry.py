@@ -12,7 +12,6 @@ from strategies.bjorgum_double_tap_strategy import BjorgumDoubleTapStrategy
 from strategies.evasive_super_trend_strategy_source_select_strategy import EvasiveSuperTrendStrategySourceSelectStrategy
 from strategies.kama_trend_strategy import KamaTrendStrategy
 from strategies.new_tott_strategy import NewTottStrategy
-from strategies.rudy_breakout_momentum_v2_strategy import RudyBreakoutMomentumV2Strategy
 from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23WithAlertsStrategy
 from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy import AllDayFuturesScalperEmaTrendCrossAtrBrackets
 from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
@@ -33,7 +32,6 @@ class StrategyRegistry:
         "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
         "KamaTrendStrategy": KamaTrendStrategy,
         "NewTottStrategy": NewTottStrategy,
-        "RudyBreakoutMomentumV2Strategy": RudyBreakoutMomentumV2Strategy,
         "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
         "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
         "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
