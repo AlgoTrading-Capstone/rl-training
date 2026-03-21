@@ -189,6 +189,7 @@ STRATEGY_LIST = [
     "TrendmasterPro23WithAlertsStrategy",
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "ThreeCommasBotStrategy",
+    "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

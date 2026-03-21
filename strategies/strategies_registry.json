@@ -68,5 +68,12 @@
     "class_name": "ThreeCommasBotStrategy",
     "timeframe": "15m",
     "lookback_hours": 13
+  },
+  "Ny15mOrbWithAFixedSlTpNasdaqStrategy": {
+    "enabled": true,
+    "module": "strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy",
+    "class_name": "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 13
   }
 }
