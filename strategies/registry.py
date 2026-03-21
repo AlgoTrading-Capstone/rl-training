@@ -16,7 +16,6 @@ from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23
 from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy import AllDayFuturesScalperEmaTrendCrossAtrBrackets
 from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
 from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWithAFixedSlTpNasdaqStrategy
-from strategies.traling_sl_target_strategy import TralingSLTargetStrategy
 
 
 class StrategyRegistry:
@@ -36,7 +35,6 @@ class StrategyRegistry:
         "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
         "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
         "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
-        "TralingSLTargetStrategy": TralingSLTargetStrategy,
     }
 
     @classmethod

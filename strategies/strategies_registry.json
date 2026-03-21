@@ -61,12 +61,5 @@
     "class_name": "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
     "timeframe": "15m",
     "lookback_hours": 13
-  },
-  "TralingSLTargetStrategy": {
-    "enabled": true,
-    "module": "strategies.traling_sl_target_strategy",
-    "class_name": "TralingSLTargetStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 48
   }
 }

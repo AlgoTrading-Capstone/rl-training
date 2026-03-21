@@ -201,7 +201,6 @@ STRATEGY_LIST = [
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "ThreeCommasBotStrategy",
     "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
-    "TralingSLTargetStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
