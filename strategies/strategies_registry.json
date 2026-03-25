@@ -61,5 +61,12 @@
     "class_name": "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
     "timeframe": "15m",
     "lookback_hours": 13
+  },
+  "AleksDuZeroLagProSafeModeStrategy": {
+    "enabled": true,
+    "module": "strategies.aleks_du_zero_lag_pro_safe_mode_strategy",
+    "class_name": "AleksDuZeroLagProSafeModeStrategy",
+    "timeframe": "4h",
+    "lookback_hours": 152
   }
 }
