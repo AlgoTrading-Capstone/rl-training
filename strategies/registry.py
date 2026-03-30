@@ -7,17 +7,15 @@ This allows configuration-driven strategy selection without code changes.
 
 from typing import Dict, Type, List
 from strategies.base_strategy import BaseStrategy
-from strategies.supertrend_strategy import SupertrendStrategy
+from strategies.supertrend_legacy_strategy import SupertrendStrategy
 from strategies.evasive_super_trend_strategy_source_select_strategy import EvasiveSuperTrendStrategySourceSelectStrategy
 from strategies.kama_trend_strategy import KamaTrendStrategy
 from strategies.new_tott_strategy import NewTottStrategy
-from strategies.rudy_breakout_momentum_v2_strategy import RudyBreakoutMomentumV2Strategy
-from strategies.special_k_strategy import SpecialKStrategy
 from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23WithAlertsStrategy
 from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy import AllDayFuturesScalperEmaTrendCrossAtrBrackets
 from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
 from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWithAFixedSlTpNasdaqStrategy
-from strategies.traling_sl_target_strategy import TralingSLTargetStrategy
+from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagProSafeModeStrategy
 
 
 class StrategyRegistry:
@@ -32,13 +30,11 @@ class StrategyRegistry:
 "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
         "KamaTrendStrategy": KamaTrendStrategy,
         "NewTottStrategy": NewTottStrategy,
-        "RudyBreakoutMomentumV2Strategy": RudyBreakoutMomentumV2Strategy,
-        "SpecialKStrategy": SpecialKStrategy,
-            "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
-            "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
-            "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
-            "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
-            "TralingSLTargetStrategy": TralingSLTargetStrategy,
+        "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
+        "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
+        "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
+        "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
+            "AleksDuZeroLagProSafeModeStrategy": AleksDuZeroLagProSafeModeStrategy,
     }
 
     @classmethod

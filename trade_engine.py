@@ -11,7 +11,7 @@ This module encapsulates all trading logic:
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
-from config import SLIPPAGE_MEAN
+from config import SLIPPAGE_MEAN, SLIPPAGE_STD
 
 import numpy as np
 
@@ -152,9 +152,15 @@ def apply_trade(balance: float,
         # No trade needed or invalid price
         return balance, holdings, 0.0
 
-    # Simulate slippage
+    # Simulate slippage (stochastic if SLIPPAGE_STD > 0, deterministic otherwise)
     direction = 1 if delta_btc > 0 else -1
-    slippage = direction * SLIPPAGE_MEAN
+    if SLIPPAGE_STD > 0.0:
+        slippage_magnitude = np.random.lognormal(
+            mean=np.log(SLIPPAGE_MEAN), sigma=SLIPPAGE_STD
+        )
+    else:
+        slippage_magnitude = SLIPPAGE_MEAN
+    slippage = direction * slippage_magnitude
 
     exec_price = price * (1 + slippage)
 
@@ -327,6 +333,29 @@ def apply_action(a_pos: float,
             new_entry_price = price
             new_stop_price = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
 
+        # Same side position resize
+        elif old_side == new_side and not np.isclose(holdings, 0.0):
+            old_abs = abs(holdings)
+            new_abs = abs(new_holdings)
+
+            # Scale-in: update average entry and recompute stop
+            if new_abs > old_abs:
+                added_abs = abs(effective_delta_btc)
+
+                if old_entry_price is not None and added_abs > 0.0:
+                    new_entry_price = (
+                        old_entry_price * old_abs + price * added_abs
+                    ) / new_abs
+                else:
+                    new_entry_price = price
+
+                new_stop_price = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
+
+            # Scale-out on same side: keep existing entry/stop unchanged
+            else:
+                new_entry_price = old_entry_price
+                new_stop_price = old_stop_price
+                
     new_state = PositionState(
         balance=new_balance,
         holdings=new_holdings,

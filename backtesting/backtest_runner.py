@@ -192,7 +192,37 @@ def run_backtest(
         )
 
     # --------------------------------------------------------
-    # (D) Final hard check: state/action dimensions
+    # (D) Normalization-critical parameters
+    # --------------------------------------------------------
+    # INITIAL_BALANCE and MAX_POSITION_BTC are used directly in
+    # normalize_state() to scale balance and holdings. A mismatch
+    # means the policy receives state vectors at a completely
+    # different scale than it was trained on.
+    train_env = model_metadata.get("environment", {})
+    norm_mismatches = []
+
+    trained_balance = train_env.get("initial_balance")
+    if trained_balance is not None and trained_balance != config.INITIAL_BALANCE:
+        norm_mismatches.append(
+            f"INITIAL_BALANCE (training={trained_balance}, backtest={config.INITIAL_BALANCE})"
+        )
+
+    trained_max_btc = train_env.get("max_position_btc")
+    if trained_max_btc is not None and trained_max_btc != config.MAX_POSITION_BTC:
+        norm_mismatches.append(
+            f"MAX_POSITION_BTC (training={trained_max_btc}, backtest={config.MAX_POSITION_BTC})"
+        )
+
+    if norm_mismatches:
+        raise ValueError(
+            "Normalization-critical parameter mismatch between training and backtest:\n"
+            "  - " + "\n  - ".join(norm_mismatches) + "\n"
+            "These values are used in normalize_state() to scale balance and holdings.\n"
+            "A mismatch produces state vectors at a different scale, breaking the trained policy."
+        )
+
+    # --------------------------------------------------------
+    # (E) Final hard check: state/action dimensions
     # --------------------------------------------------------
     if env.state_dim != int(env_spec["state_dim"]):
         raise ValueError(

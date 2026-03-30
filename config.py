@@ -93,7 +93,7 @@ EXCHANGE_NAME = "binance"
 TRADING_PAIR = "BTC/USDT"
 
 # Candle timeframe to fetch from the exchange.
-#Defines the resolution for both Crypto and External data.
+# Defines the resolution for both Crypto and External data.
 # 15-minute candles offer a strong balance between noise reduction and responsiveness for crypto RL tasks.
 DATA_TIMEFRAME = "15m"
 
@@ -108,6 +108,19 @@ INDICATORS = [
     "close_30_sma",  # [5] Simple Moving Average over 30 closes (short-term trend)
     "close_60_sma",  # [6] Simple Moving Average over 60 closes (mid-term trend)
 ]
+
+# Number of candles each indicator needs before producing a valid (non-NaN) value.
+# Used by DataManager to compute the warmup period when fetching extra historical data.
+# If an indicator is added/removed above, this map MUST be updated to match.
+INDICATOR_WARMUP_CANDLES = {
+    "macd": 34,
+    "boll_ub": 20,
+    "boll_lb": 20,
+    "rsi_30": 31,
+    "dx_30": 31,
+    "close_30_sma": 30,
+    "close_60_sma": 60,
+}
 
 # Turbulence calculation (market stress indicator)
 ENABLE_TURBULENCE = True
@@ -132,8 +145,10 @@ EXTERNAL_ASSETS = [
     }
 ]
 
-# Average slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
-SLIPPAGE_MEAN = 0.0001
+# Slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
+# Sampled per trade from a lognormal distribution: lognormal(ln(SLIPPAGE_MEAN), SLIPPAGE_STD).
+SLIPPAGE_MEAN = 0.0003
+SLIPPAGE_STD = 0.5
 
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"
@@ -179,17 +194,15 @@ ENABLE_STRATEGIES = True
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
-    "SupertrendStrategy",                             # Triple Supertrend with optimized parameters
+    "SupertrendStrategy",                             # Supertrend Legacy (pre-converter baseline)
 "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
-    "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
-    # "SpecialKStrategy",                             # Martin Pring Special K oscillator (1D) — requires ~3.2 years of data (lookback_hours=19776). Enable when training on a large enough dataset.
     "TrendmasterPro23WithAlertsStrategy",
     "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
     "ThreeCommasBotStrategy",
     "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
-    "TralingSLTargetStrategy",
+    "AleksDuZeroLagProSafeModeStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

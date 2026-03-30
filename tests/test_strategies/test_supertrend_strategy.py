@@ -17,7 +17,7 @@ import numpy as np
 import talib.abstract as ta
 from pandas import DataFrame
 
-from strategies.supertrend_strategy import SupertrendStrategy
+from strategies.supertrend_legacy_strategy import SupertrendStrategy
 from strategies.base_strategy import SignalType
 
 
