@@ -180,8 +180,7 @@ ENABLE_STRATEGIES = True
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
     "SupertrendStrategy",                             # Triple Supertrend with optimized parameters
-    "BjorgumDoubleTapStrategy",                       # Double top/bottom pattern detection (4h)
-    "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
+"EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
     "RudyBreakoutMomentumV2Strategy",                 # 126-bar breakout with EMA+RSI filter (1D)
