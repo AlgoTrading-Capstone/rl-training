@@ -16,6 +16,7 @@ from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy im
 from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
 from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWithAFixedSlTpNasdaqStrategy
 from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagProSafeModeStrategy
+from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatStrategy
 
 
 class StrategyRegistry:
@@ -35,6 +36,7 @@ class StrategyRegistry:
         "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
         "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
             "AleksDuZeroLagProSafeModeStrategy": AleksDuZeroLagProSafeModeStrategy,
+            "SovereignExecutionJoatStrategy": SovereignExecutionJoatStrategy,
     }
 
     @classmethod

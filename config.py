@@ -203,6 +203,7 @@ STRATEGY_LIST = [
     "ThreeCommasBotStrategy",
     "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
     "AleksDuZeroLagProSafeModeStrategy",
+    "SovereignExecutionJoatStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

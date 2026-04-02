@@ -75,5 +75,12 @@
     "class_name": "AleksDuZeroLagProSafeModeStrategy",
     "timeframe": "4h",
     "lookback_hours": 152
+  },
+  "SovereignExecutionJoatStrategy": {
+    "enabled": true,
+    "module": "strategies.sovereign_execution_joat_strategy",
+    "class_name": "SovereignExecutionJoatStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 500
   }
 }
