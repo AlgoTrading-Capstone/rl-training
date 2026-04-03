@@ -82,5 +82,12 @@
     "class_name": "SovereignExecutionJoatStrategy",
     "timeframe": "15m",
     "lookback_hours": 500
+  },
+  "GoldMtfStrategy": {
+    "enabled": true,
+    "module": "strategies.gold_mtf_strategy",
+    "class_name": "GoldMtfStrategy",
+    "timeframe": "1m",
+    "lookback_hours": 6
   }
 }

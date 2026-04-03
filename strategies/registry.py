@@ -17,6 +17,7 @@ from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
 from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWithAFixedSlTpNasdaqStrategy
 from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagProSafeModeStrategy
 from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatStrategy
+from strategies.gold_mtf_strategy import GoldMtfStrategy
 
 
 class StrategyRegistry:
@@ -37,6 +38,7 @@ class StrategyRegistry:
         "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
             "AleksDuZeroLagProSafeModeStrategy": AleksDuZeroLagProSafeModeStrategy,
             "SovereignExecutionJoatStrategy": SovereignExecutionJoatStrategy,
+            "GoldMtfStrategy": GoldMtfStrategy,
     }
 
     @classmethod
