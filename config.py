@@ -206,6 +206,7 @@ STRATEGY_LIST = [
     "SovereignExecutionJoatStrategy",
     "GoldMtfStrategy",
     "QuantPullbackDayTradeStrategy",
+    "Sensex500PointInstitutionalBreakoutStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

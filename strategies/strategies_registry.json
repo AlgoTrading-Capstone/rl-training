@@ -96,5 +96,12 @@
     "class_name": "QuantPullbackDayTradeStrategy",
     "timeframe": "15m",
     "lookback_hours": 15
+  },
+  "Sensex500PointInstitutionalBreakoutStrategy": {
+    "enabled": true,
+    "module": "strategies.sensex_500_point_institutional_breakout_strategy",
+    "class_name": "Sensex500PointInstitutionalBreakoutStrategy",
+    "timeframe": "5m",
+    "lookback_hours": 8
   }
 }

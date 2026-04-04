@@ -19,6 +19,7 @@ from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagPr
 from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatStrategy
 from strategies.gold_mtf_strategy import GoldMtfStrategy
 from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeStrategy
+from strategies.sensex_500_point_institutional_breakout_strategy import Sensex500PointInstitutionalBreakoutStrategy
 
 
 class StrategyRegistry:
@@ -41,6 +42,7 @@ class StrategyRegistry:
             "SovereignExecutionJoatStrategy": SovereignExecutionJoatStrategy,
             "GoldMtfStrategy": GoldMtfStrategy,
             "QuantPullbackDayTradeStrategy": QuantPullbackDayTradeStrategy,
+            "Sensex500PointInstitutionalBreakoutStrategy": Sensex500PointInstitutionalBreakoutStrategy,
     }
 
     @classmethod
