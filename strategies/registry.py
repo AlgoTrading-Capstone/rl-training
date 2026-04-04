@@ -18,6 +18,7 @@ from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWith
 from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagProSafeModeStrategy
 from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatStrategy
 from strategies.gold_mtf_strategy import GoldMtfStrategy
+from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeStrategy
 
 
 class StrategyRegistry:
@@ -39,6 +40,7 @@ class StrategyRegistry:
             "AleksDuZeroLagProSafeModeStrategy": AleksDuZeroLagProSafeModeStrategy,
             "SovereignExecutionJoatStrategy": SovereignExecutionJoatStrategy,
             "GoldMtfStrategy": GoldMtfStrategy,
+            "QuantPullbackDayTradeStrategy": QuantPullbackDayTradeStrategy,
     }
 
     @classmethod

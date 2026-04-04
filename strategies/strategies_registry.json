@@ -89,5 +89,12 @@
     "class_name": "GoldMtfStrategy",
     "timeframe": "1m",
     "lookback_hours": 6
+  },
+  "QuantPullbackDayTradeStrategy": {
+    "enabled": true,
+    "module": "strategies.quant_pullback_day_trade_strategy",
+    "class_name": "QuantPullbackDayTradeStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 15
   }
 }
