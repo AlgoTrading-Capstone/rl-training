@@ -20,6 +20,7 @@ from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatS
 from strategies.gold_mtf_strategy import GoldMtfStrategy
 from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeStrategy
 from strategies.sensex_500_point_institutional_breakout_strategy import Sensex500PointInstitutionalBreakoutStrategy
+from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
 
 
 class StrategyRegistry:
@@ -43,6 +44,7 @@ class StrategyRegistry:
             "GoldMtfStrategy": GoldMtfStrategy,
             "QuantPullbackDayTradeStrategy": QuantPullbackDayTradeStrategy,
             "Sensex500PointInstitutionalBreakoutStrategy": Sensex500PointInstitutionalBreakoutStrategy,
+            "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
     }
 
     @classmethod

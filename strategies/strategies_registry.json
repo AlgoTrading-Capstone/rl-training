@@ -103,5 +103,12 @@
     "class_name": "Sensex500PointInstitutionalBreakoutStrategy",
     "timeframe": "5m",
     "lookback_hours": 8
+  },
+  "MonthlyReturnsInPinescriptStrategiesStrategy": {
+    "enabled": true,
+    "module": "strategies.monthly_returns_in_pinescript_strategies_strategy",
+    "class_name": "MonthlyReturnsInPinescriptStrategiesStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 13
   }
 }
