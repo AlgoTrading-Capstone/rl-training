@@ -17,7 +17,7 @@ import pandas as pd
 import talib
 
 from strategies.base_strategy import BaseStrategy, SignalType, StrategyRecommendation
-from strategies.utils.resampling import resample_to_interval, resampled_merge
+from utils.resampling import resample_to_interval, resampled_merge
 
 
 class GreerLeapSelfOptimizingXgboostApproxStatsStrategy(BaseStrategy):
