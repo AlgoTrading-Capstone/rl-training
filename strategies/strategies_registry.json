@@ -138,5 +138,12 @@
     "class_name": "Tasc202603OnePercentAWeekStrategy",
     "timeframe": "1d",
     "lookback_hours": null
+  },
+  "EmaPullbackAdxCvdDivergenceStrategy": {
+    "enabled": true,
+    "module": "strategies.ema_pullback_adx_cvd_divergence_strategy",
+    "class_name": "EmaPullbackAdxCvdDivergenceStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 24
   }
 }

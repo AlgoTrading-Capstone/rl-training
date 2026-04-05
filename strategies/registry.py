@@ -25,6 +25,7 @@ from strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy import 
 from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
 from strategies.smc_fractal_strategy_jamol_v3_strategy import SmcFractalStrategyJamolV3
 from strategies.tasc_2026_03_one_percent_a_week_strategy import Tasc202603OnePercentAWeekStrategy
+from strategies.ema_pullback_adx_cvd_divergence_strategy import EmaPullbackAdxCvdDivergenceStrategy
 
 
 class StrategyRegistry:
@@ -53,6 +54,7 @@ class StrategyRegistry:
             "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
             "SmcFractalStrategyJamolV3": SmcFractalStrategyJamolV3,
             "Tasc202603OnePercentAWeekStrategy": Tasc202603OnePercentAWeekStrategy,
+            "EmaPullbackAdxCvdDivergenceStrategy": EmaPullbackAdxCvdDivergenceStrategy,
     }
 
     @classmethod

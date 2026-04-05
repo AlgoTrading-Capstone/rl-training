@@ -212,6 +212,7 @@ STRATEGY_LIST = [
     "TrendPullbackMomentumSideAwareStrategy",
     "SmcFractalStrategyJamolV3",
     "Tasc202603OnePercentAWeekStrategy",
+    "EmaPullbackAdxCvdDivergenceStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
