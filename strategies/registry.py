@@ -55,6 +55,7 @@ class StrategyRegistry:
             "SmcFractalStrategyJamolV3": SmcFractalStrategyJamolV3,
             "Tasc202603OnePercentAWeekStrategy": Tasc202603OnePercentAWeekStrategy,
             "EmaPullbackAdxCvdDivergenceStrategy": EmaPullbackAdxCvdDivergenceStrategy,
+            "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
     }
 
     @classmethod
