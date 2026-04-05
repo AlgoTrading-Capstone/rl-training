@@ -208,6 +208,7 @@ STRATEGY_LIST = [
     "QuantPullbackDayTradeStrategy",
     "Sensex500PointInstitutionalBreakoutStrategy",
     "MonthlyReturnsInPinescriptStrategiesStrategy",
+    "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

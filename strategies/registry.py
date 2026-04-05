@@ -21,6 +21,7 @@ from strategies.gold_mtf_strategy import GoldMtfStrategy
 from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeStrategy
 from strategies.sensex_500_point_institutional_breakout_strategy import Sensex500PointInstitutionalBreakoutStrategy
 from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
+from strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy import GreerLeapSelfOptimizingXgboostApproxStatsStrategy
 
 
 class StrategyRegistry:
@@ -45,6 +46,7 @@ class StrategyRegistry:
             "QuantPullbackDayTradeStrategy": QuantPullbackDayTradeStrategy,
             "Sensex500PointInstitutionalBreakoutStrategy": Sensex500PointInstitutionalBreakoutStrategy,
             "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
+            "GreerLeapSelfOptimizingXgboostApproxStatsStrategy": GreerLeapSelfOptimizingXgboostApproxStatsStrategy,
     }
 
     @classmethod
