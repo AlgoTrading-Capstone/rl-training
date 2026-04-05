@@ -124,5 +124,12 @@
     "class_name": "TrendPullbackMomentumSideAwareStrategy",
     "timeframe": "15m",
     "lookback_hours": 400
+  },
+  "SmcFractalStrategyJamolV3": {
+    "enabled": true,
+    "module": "strategies.smc_fractal_strategy_jamol_v3_strategy",
+    "class_name": "SmcFractalStrategyJamolV3",
+    "timeframe": "15m",
+    "lookback_hours": 125
   }
 }

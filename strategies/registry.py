@@ -23,6 +23,7 @@ from strategies.sensex_500_point_institutional_breakout_strategy import Sensex50
 from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
 from strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy import GreerLeapSelfOptimizingXgboostApproxStatsStrategy
 from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
+from strategies.smc_fractal_strategy_jamol_v3_strategy import SmcFractalStrategyJamolV3
 
 
 class StrategyRegistry:
@@ -49,6 +50,7 @@ class StrategyRegistry:
             "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
             "GreerLeapSelfOptimizingXgboostApproxStatsStrategy": GreerLeapSelfOptimizingXgboostApproxStatsStrategy,
             "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
+            "SmcFractalStrategyJamolV3": SmcFractalStrategyJamolV3,
     }
 
     @classmethod

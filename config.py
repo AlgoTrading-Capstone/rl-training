@@ -210,6 +210,7 @@ STRATEGY_LIST = [
     "MonthlyReturnsInPinescriptStrategiesStrategy",
     "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
     "TrendPullbackMomentumSideAwareStrategy",
+    "SmcFractalStrategyJamolV3",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
