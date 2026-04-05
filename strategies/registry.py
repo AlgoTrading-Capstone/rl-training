@@ -22,6 +22,7 @@ from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeSt
 from strategies.sensex_500_point_institutional_breakout_strategy import Sensex500PointInstitutionalBreakoutStrategy
 from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
 from strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy import GreerLeapSelfOptimizingXgboostApproxStatsStrategy
+from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
 
 
 class StrategyRegistry:
@@ -47,6 +48,7 @@ class StrategyRegistry:
             "Sensex500PointInstitutionalBreakoutStrategy": Sensex500PointInstitutionalBreakoutStrategy,
             "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
             "GreerLeapSelfOptimizingXgboostApproxStatsStrategy": GreerLeapSelfOptimizingXgboostApproxStatsStrategy,
+            "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
     }
 
     @classmethod

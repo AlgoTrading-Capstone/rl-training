@@ -209,6 +209,7 @@ STRATEGY_LIST = [
     "Sensex500PointInstitutionalBreakoutStrategy",
     "MonthlyReturnsInPinescriptStrategiesStrategy",
     "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
+    "TrendPullbackMomentumSideAwareStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

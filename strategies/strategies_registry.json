@@ -117,5 +117,12 @@
     "class_name": "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
     "timeframe": "15m",
     "lookback_hours": 25
+  },
+  "TrendPullbackMomentumSideAwareStrategy": {
+    "enabled": true,
+    "module": "strategies.trend_pullback_momentum_side_aware_strategy",
+    "class_name": "TrendPullbackMomentumSideAwareStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 400
   }
 }
