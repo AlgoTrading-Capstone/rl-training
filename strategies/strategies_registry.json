@@ -145,5 +145,12 @@
     "class_name": "EmaPullbackAdxCvdDivergenceStrategy",
     "timeframe": "15m",
     "lookback_hours": 24
+  },
+  "KineticInertiaShort1hStrategy": {
+    "enabled": true,
+    "module": "strategies.kinetic_inertia_short_1h_strategy",
+    "class_name": "KineticInertiaShort1hStrategy",
+    "timeframe": "1h",
+    "lookback_hours": 21
   }
 }

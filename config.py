@@ -213,6 +213,7 @@ STRATEGY_LIST = [
     "SmcFractalStrategyJamolV3",
     "Tasc202603OnePercentAWeekStrategy",
     "EmaPullbackAdxCvdDivergenceStrategy",
+    "KineticInertiaShort1hStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
