@@ -131,5 +131,12 @@
     "class_name": "SmcFractalStrategyJamolV3",
     "timeframe": "15m",
     "lookback_hours": 125
+  },
+  "Tasc202603OnePercentAWeekStrategy": {
+    "enabled": true,
+    "module": "strategies.tasc_2026_03_one_percent_a_week_strategy",
+    "class_name": "Tasc202603OnePercentAWeekStrategy",
+    "timeframe": "1d",
+    "lookback_hours": null
   }
 }
