@@ -29,6 +29,7 @@ from strategies.ema_pullback_adx_cvd_divergence_strategy import EmaPullbackAdxCv
 from strategies.kinetic_inertia_short_1h_strategy import KineticInertiaShort1hStrategy
 from strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy import XauusdM5HybridEma915PartialTpRunnerStrategy
 from strategies.pg_qsd_for_nifty_future_strategy import PgQsdForNiftyFutureStrategy
+from strategies.cdv_ema_cross_strategy_v6_strategy import CdvEmaCrossStrategyV6
 
 
 class StrategyRegistry:
@@ -62,6 +63,7 @@ class StrategyRegistry:
             "KineticInertiaShort1hStrategy": KineticInertiaShort1hStrategy,
             "XauusdM5HybridEma915PartialTpRunnerStrategy": XauusdM5HybridEma915PartialTpRunnerStrategy,
             "PgQsdForNiftyFutureStrategy": PgQsdForNiftyFutureStrategy,
+            "CdvEmaCrossStrategyV6": CdvEmaCrossStrategyV6,
     }
 
     @classmethod

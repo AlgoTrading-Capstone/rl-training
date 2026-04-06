@@ -166,5 +166,12 @@
     "class_name": "PgQsdForNiftyFutureStrategy",
     "timeframe": "15m",
     "lookback_hours": 16
+  },
+  "CdvEmaCrossStrategyV6": {
+    "enabled": true,
+    "module": "strategies.cdv_ema_cross_strategy_v6_strategy",
+    "class_name": "CdvEmaCrossStrategyV6",
+    "timeframe": "1h",
+    "lookback_hours": 168
   }
 }
