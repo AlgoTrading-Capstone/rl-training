@@ -152,5 +152,12 @@
     "class_name": "KineticInertiaShort1hStrategy",
     "timeframe": "1h",
     "lookback_hours": 21
+  },
+  "XauusdM5HybridEma915PartialTpRunnerStrategy": {
+    "enabled": true,
+    "module": "strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy",
+    "class_name": "XauusdM5HybridEma915PartialTpRunnerStrategy",
+    "timeframe": "5m",
+    "lookback_hours": 4
   }
 }

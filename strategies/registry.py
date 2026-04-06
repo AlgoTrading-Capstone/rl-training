@@ -27,6 +27,7 @@ from strategies.smc_fractal_strategy_jamol_v3_strategy import SmcFractalStrategy
 from strategies.tasc_2026_03_one_percent_a_week_strategy import Tasc202603OnePercentAWeekStrategy
 from strategies.ema_pullback_adx_cvd_divergence_strategy import EmaPullbackAdxCvdDivergenceStrategy
 from strategies.kinetic_inertia_short_1h_strategy import KineticInertiaShort1hStrategy
+from strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy import XauusdM5HybridEma915PartialTpRunnerStrategy
 
 
 class StrategyRegistry:
@@ -58,6 +59,7 @@ class StrategyRegistry:
             "EmaPullbackAdxCvdDivergenceStrategy": EmaPullbackAdxCvdDivergenceStrategy,
             "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
             "KineticInertiaShort1hStrategy": KineticInertiaShort1hStrategy,
+            "XauusdM5HybridEma915PartialTpRunnerStrategy": XauusdM5HybridEma915PartialTpRunnerStrategy,
     }
 
     @classmethod
