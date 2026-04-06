@@ -215,6 +215,7 @@ STRATEGY_LIST = [
     "EmaPullbackAdxCvdDivergenceStrategy",
     "KineticInertiaShort1hStrategy",
     "XauusdM5HybridEma915PartialTpRunnerStrategy",
+    "PgQsdForNiftyFutureStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

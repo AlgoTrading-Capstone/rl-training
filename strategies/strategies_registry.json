@@ -159,5 +159,12 @@
     "class_name": "XauusdM5HybridEma915PartialTpRunnerStrategy",
     "timeframe": "5m",
     "lookback_hours": 4
+  },
+  "PgQsdForNiftyFutureStrategy": {
+    "enabled": true,
+    "module": "strategies.pg_qsd_for_nifty_future_strategy",
+    "class_name": "PgQsdForNiftyFutureStrategy",
+    "timeframe": "15m",
+    "lookback_hours": 16
   }
 }
