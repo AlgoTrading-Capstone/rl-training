@@ -30,6 +30,7 @@ from strategies.kinetic_inertia_short_1h_strategy import KineticInertiaShort1hSt
 from strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy import XauusdM5HybridEma915PartialTpRunnerStrategy
 from strategies.pg_qsd_for_nifty_future_strategy import PgQsdForNiftyFutureStrategy
 from strategies.cdv_ema_cross_strategy_v6_strategy import CdvEmaCrossStrategyV6
+from strategies.mtf_ema_engulf_retest_nq_1m_strategy import MtfEmaEngulfRetestNq1MStrategy
 
 
 class StrategyRegistry:
@@ -64,6 +65,7 @@ class StrategyRegistry:
             "XauusdM5HybridEma915PartialTpRunnerStrategy": XauusdM5HybridEma915PartialTpRunnerStrategy,
             "PgQsdForNiftyFutureStrategy": PgQsdForNiftyFutureStrategy,
             "CdvEmaCrossStrategyV6": CdvEmaCrossStrategyV6,
+            "MtfEmaEngulfRetestNq1MStrategy": MtfEmaEngulfRetestNq1MStrategy,
     }
 
     @classmethod

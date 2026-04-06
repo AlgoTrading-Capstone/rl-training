@@ -217,6 +217,7 @@ STRATEGY_LIST = [
     "XauusdM5HybridEma915PartialTpRunnerStrategy",
     "PgQsdForNiftyFutureStrategy",
     "CdvEmaCrossStrategyV6",
+    "MtfEmaEngulfRetestNq1MStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing

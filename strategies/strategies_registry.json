@@ -173,5 +173,12 @@
     "class_name": "CdvEmaCrossStrategyV6",
     "timeframe": "1h",
     "lookback_hours": 168
+  },
+  "MtfEmaEngulfRetestNq1MStrategy": {
+    "enabled": true,
+    "module": "strategies.mtf_ema_engulf_retest_nq_1m_strategy",
+    "class_name": "MtfEmaEngulfRetestNq1MStrategy",
+    "timeframe": "1m",
+    "lookback_hours": 10
   }
 }
