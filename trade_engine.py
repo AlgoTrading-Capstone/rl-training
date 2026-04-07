@@ -42,6 +42,7 @@ class TradeConfig:
     min_stop_pct: float
     max_stop_pct: float
     exposure_deadzone: float
+    stop_update_deadzone: float
     fee_rate: float
 
 
@@ -53,6 +54,7 @@ class TradeResult:
     new_state: PositionState
     effective_delta_btc: float  # how many BTC were actually traded (can be 0.0)
     trade_executed: bool        # True if any trade (market buy/sell) occurred
+    stop_updated: bool = False  # True if stop-loss was meaningfully updated
 
 
 # ------------------------------------------------------------
@@ -131,6 +133,33 @@ def compute_delta_btc(current_holdings: float,
     # Delta = how many BTC must be executed
     delta_btc = target_btc - current_holdings
     return float(delta_btc)
+
+
+# ------------------------------------------------------------
+# Stop-update decision helper
+# ------------------------------------------------------------
+
+def should_update_stop(current_stop: Optional[float],
+                       desired_stop: float,
+                       price: float,
+                       cfg: TradeConfig) -> bool:
+    """
+    Determine if a stop-loss update should be applied.
+
+    Uses a dedicated stop-update deadzone (separate from exposure deadzone)
+    to avoid noisy micro-adjustments. The threshold is measured as a
+    fraction of the current price.
+
+    Returns True if:
+    - There is no current stop (always set initial stop)
+    - The change exceeds cfg.stop_update_deadzone * price
+    """
+    if current_stop is None:
+        return True
+    if price <= 0.0:
+        return False
+    change_frac = abs(desired_stop - current_stop) / price
+    return change_frac > cfg.stop_update_deadzone
 
 
 # ------------------------------------------------------------
@@ -224,12 +253,12 @@ def apply_action(a_pos: float,
     compute and apply the trade, update stop-loss, and return the new state.
 
     Steps:
-    - compute equity
-    - derive target notional from a_pos (respect leverage)
-    - apply BTC position cap
-    - apply exposure deadzone
-    - compute delta_btc and execute trade
-    - update entry_price & stop_price (on new / flipped positions)
+    1. Compute equity and derive target notional from a_pos
+    2. Apply exposure deadzone → decide if rebalance trade needed
+    3. Execute trade if needed
+    4. Update entry price based on trade case
+    5. Independently compute desired stop from a_sl
+    6. Apply stop-specific deadzone → update stop if meaningful
     """
 
     balance = state.balance
@@ -271,91 +300,101 @@ def apply_action(a_pos: float,
     target_exposure_norm = float(np.clip(target_exposure_norm, -1.0, 1.0))
 
     # --------------------------------------------------------
-    # 2. Deadzone: small exposure changes - HOLD
+    # 2. Exposure deadzone: decide if rebalance trade is needed
     # --------------------------------------------------------
     exposure_change = abs(target_exposure_norm - current_exposure_norm)
-    if exposure_change < cfg.exposure_deadzone:
-        # Treat as HOLD (no trade, keep existing stop/entry)
-        return TradeResult(
-            new_state=state,
-            effective_delta_btc=0.0,
-            trade_executed=False,
+    trade_needed = exposure_change >= cfg.exposure_deadzone
+
+    # --------------------------------------------------------
+    # 3. Execute trade if needed
+    # --------------------------------------------------------
+    if trade_needed:
+        delta_btc = compute_delta_btc(
+            current_holdings=holdings,
+            target_notional=target_notional,
+            price=price,
+            cfg=cfg,
         )
 
-    # --------------------------------------------------------
-    # 3. Compute BTC delta and execute trade
-    # --------------------------------------------------------
-    delta_btc = compute_delta_btc(
-        current_holdings=holdings,
-        target_notional=target_notional,
-        price=price,
-        cfg=cfg,
-    )
-
-    new_balance, new_holdings, effective_delta_btc = apply_trade(
-        balance=balance,
-        holdings=holdings,
-        price=price,
-        delta_btc=delta_btc,
-        cfg=cfg,
-    )
-
-    trade_executed = not np.isclose(effective_delta_btc, 0.0)
+        new_balance, new_holdings, effective_delta_btc = apply_trade(
+            balance=balance,
+            holdings=holdings,
+            price=price,
+            delta_btc=delta_btc,
+            cfg=cfg,
+        )
+        trade_executed = not np.isclose(effective_delta_btc, 0.0)
+    else:
+        new_balance = balance
+        new_holdings = holdings
+        effective_delta_btc = 0.0
+        trade_executed = False
 
     # --------------------------------------------------------
-    # 4. Update entry price & stop-loss
+    # 4. Update entry price (trade-dependent)
     # --------------------------------------------------------
     old_entry_price = state.entry_price
     old_stop_price = state.stop_price
 
     new_entry_price = old_entry_price
     new_stop_price = old_stop_price
+    stop_updated = False
 
-    # If we flattened the position - clear entry & stop
+    # Determine old side (+1 long, -1 short, 0 flat)
+    old_side = 0
+    if not np.isclose(holdings, 0.0):
+        old_side = 1 if holdings > 0.0 else -1
+
     if np.isclose(new_holdings, 0.0):
+        # Flattened → clear entry & stop
         new_entry_price = None
         new_stop_price = None
     else:
-        # Determine old/new side (+1 long, -1 short, 0 flat)
-        old_side = 0
-        if not np.isclose(holdings, 0.0):
-            old_side = 1 if holdings > 0.0 else -1
-
         new_side = 1 if new_holdings > 0.0 else -1
 
-        # New position opened from flat
-        if np.isclose(holdings, 0.0) and not np.isclose(new_holdings, 0.0):
+        # ---- Entry price logic ----
+        # Open from flat
+        if old_side == 0:
             new_entry_price = price
-            new_stop_price = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
 
-        # Side flipped (long to short or short to long)
-        elif old_side != 0 and old_side != new_side:
+        # Flip side (long→short or short→long)
+        elif old_side != new_side:
             new_entry_price = price
-            new_stop_price = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
 
-        # Same side position resize
-        elif old_side == new_side and not np.isclose(holdings, 0.0):
+        # Same-side scale-in: weighted average entry
+        elif trade_executed and abs(new_holdings) > abs(holdings):
             old_abs = abs(holdings)
             new_abs = abs(new_holdings)
+            added_abs = abs(effective_delta_btc)
 
-            # Scale-in: update average entry and recompute stop
-            if new_abs > old_abs:
-                added_abs = abs(effective_delta_btc)
-
-                if old_entry_price is not None and added_abs > 0.0:
-                    new_entry_price = (
-                        old_entry_price * old_abs + price * added_abs
-                    ) / new_abs
-                else:
-                    new_entry_price = price
-
-                new_stop_price = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
-
-            # Scale-out on same side: keep existing entry/stop unchanged
+            if old_entry_price is not None and added_abs > 0.0:
+                new_entry_price = (
+                    old_entry_price * old_abs + price * added_abs
+                ) / new_abs
             else:
-                new_entry_price = old_entry_price
-                new_stop_price = old_stop_price
-                
+                new_entry_price = price
+
+        # Same-side scale-out or hold → keep existing entry
+        # (new_entry_price already equals old_entry_price)
+
+        # --------------------------------------------------------
+        # 5. Stop update (independent of trade execution)
+        # --------------------------------------------------------
+        if new_entry_price is not None:
+            desired_stop = compute_stop_price(new_side, new_entry_price, a_sl, cfg)
+
+            # New position or flip → always set stop
+            if old_side == 0 or old_side != new_side:
+                new_stop_price = desired_stop
+                stop_updated = True
+            else:
+                # Existing same-side position → apply stop-specific deadzone
+                if should_update_stop(old_stop_price, desired_stop, price, cfg):
+                    new_stop_price = desired_stop
+                    stop_updated = True
+                else:
+                    new_stop_price = old_stop_price
+
     new_state = PositionState(
         balance=new_balance,
         holdings=new_holdings,
@@ -367,6 +406,7 @@ def apply_action(a_pos: float,
         new_state=new_state,
         effective_delta_btc=effective_delta_btc,
         trade_executed=trade_executed,
+        stop_updated=stop_updated,
     )
 
 

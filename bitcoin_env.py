@@ -9,6 +9,7 @@ from config import (
     MIN_STOP_LOSS_PCT,
     MAX_STOP_LOSS_PCT,
     EXPOSURE_DEADZONE,
+    STOP_UPDATE_DEADZONE_PCT,
     REWARD_FUNCTION,
 )
 
@@ -74,6 +75,7 @@ class BitcoinTradingEnv:
             min_stop_pct=MIN_STOP_LOSS_PCT,
             max_stop_pct=MAX_STOP_LOSS_PCT,
             exposure_deadzone=EXPOSURE_DEADZONE,
+            stop_update_deadzone=STOP_UPDATE_DEADZONE_PCT,
             fee_rate=self.transaction_fee,
         )
 
@@ -401,6 +403,7 @@ class BitcoinTradingEnv:
             "stop_exec_price": None if stop_exec_price is None else float(stop_exec_price),
             "trade_executed": result.trade_executed,
             "effective_delta_btc": result.effective_delta_btc,
+            "stop_updated": result.stop_updated,
             "equity": new_equity,                 # Portfolio total value (cash + holdings * equity_price) AFTER this step
             "equity_price": float(equity_price),  # Price used to value holdings this step (close if no stop, else stop execution price)
         }

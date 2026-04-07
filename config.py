@@ -62,6 +62,11 @@ MAX_STOP_LOSS_PCT = 0.05
 # If the requested change in normalized exposure is smaller than this threshold, we treat the action as HOLD and skip trading (reduces churning and fees).
 EXPOSURE_DEADZONE = 0.10  # 10% change in target exposure
 
+# Deadzone for stop-loss updates (as fraction of current price).
+# A stop update only occurs if |desired_stop - current_stop| > STOP_UPDATE_DEADZONE_PCT * price.
+# Prevents noisy micro-adjustments to the stop level.
+STOP_UPDATE_DEADZONE_PCT = 0.002  # 0.2% of price
+
 # Hard cap on absolute BTC position size (long or short).
 # Prevents the agent from taking excessive exposure, even when leverage is available.
 MAX_POSITION_BTC = 18.0

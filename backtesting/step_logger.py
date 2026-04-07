@@ -58,7 +58,8 @@ class StepLogger:
         equity: float,
         reward: float,
         stop_triggered: bool,
-        done: bool,
+        stop_updated: bool = False,
+        done: bool = False,
     ) -> None:
         """
         Log a single backtest step in a unified, human-readable format.
@@ -130,6 +131,7 @@ class StepLogger:
         # Control flags
         # NOTE: stop_triggered refers to the candle that just closed.
         row["stop_triggered"] = bool(stop_triggered)
+        row["stop_updated"] = bool(stop_updated)
         row["done"] = bool(done)
 
         # Write row

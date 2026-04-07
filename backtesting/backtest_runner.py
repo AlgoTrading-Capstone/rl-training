@@ -316,6 +316,7 @@ def run_backtest(
                 equity=float(equity),
                 reward=float(reward),
                 stop_triggered=bool(info["stop_triggered"]),
+                stop_updated=bool(info.get("stop_updated", False)),
                 done=bool(done),
             )
 
