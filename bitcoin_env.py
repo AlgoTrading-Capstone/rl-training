@@ -11,6 +11,8 @@ from config import (
     EXPOSURE_DEADZONE,
     STOP_UPDATE_DEADZONE_PCT,
     REWARD_FUNCTION,
+    STOP_CLUSTER_WINDOW_BARS,
+    SAME_SIDE_REENTRY_WINDOW_BARS,
 )
 
 from utils.normalization import normalize_state
@@ -115,6 +117,11 @@ class BitcoinTradingEnv:
         self._bars_since_stop = -1   # -1 = never stopped this episode
         self._last_position_side = 0 # -1 short, 0 flat, +1 long
 
+        # Stop-aware reward bookkeeping
+        self._peak_equity = float(self.initial_balance)
+        self._stop_steps = []           # Step indices where stops occurred
+        self._last_stopped_side = 0     # Side of most recent stop (+1/-1, 0=never)
+
         # ------------------------------------------------------------
         # Environment dimensions (state & action)
         # ------------------------------------------------------------
@@ -169,6 +176,11 @@ class BitcoinTradingEnv:
         self._bars_in_position = 0
         self._bars_since_stop = -1
         self._last_position_side = 0
+
+        # Reset stop-aware reward bookkeeping
+        self._peak_equity = float(self.initial_balance)
+        self._stop_steps = []
+        self._last_stopped_side = 0
 
         # Load first timestep features
         self.current_price = self.price_ary[self.step_idx]
@@ -245,6 +257,7 @@ class BitcoinTradingEnv:
         # -------------------------------
         stop_triggered = False
         stop_exec_price = None
+        stopped_side = 0  # Side of position that was stopped (for reward context)
 
         if self.position.stop_price is not None and not np.isclose(self.position.holdings, 0.0):
 
@@ -252,6 +265,7 @@ class BitcoinTradingEnv:
                 # LONG stop
                 if low_p <= self.position.stop_price:
                     stop_triggered = True
+                    stopped_side = 1
                     # Execute at the worse of open or stop price - handles gap downs
                     stop_exec_price = min(open_p, self.position.stop_price)
 
@@ -259,6 +273,7 @@ class BitcoinTradingEnv:
                 # SHORT stop
                 if high_p >= self.position.stop_price:
                     stop_triggered = True
+                    stopped_side = -1
                     # Execute at the worse of open or stop price - handles gap ups
                     stop_exec_price = max(open_p, self.position.stop_price)
 
@@ -287,7 +302,11 @@ class BitcoinTradingEnv:
         # -------------------------------
         # Position context bookkeeping
         # -------------------------------
+        prev_side = self._last_position_side  # Side before this step (for re-entry detection)
+
         if stop_triggered:
+            self._last_stopped_side = stopped_side
+            self._stop_steps.append(t)
             self._bars_since_stop = 0
         elif self._bars_since_stop >= 0:
             self._bars_since_stop += 1
@@ -312,7 +331,34 @@ class BitcoinTradingEnv:
             price=equity_price,
         )
 
-        reward = self.reward_fn(old_equity, new_equity)
+        # --- Stop-aware reward context ---
+        self._peak_equity = max(self._peak_equity, new_equity)
+        current_drawdown = (
+            (self._peak_equity - new_equity) / self._peak_equity
+            if self._peak_equity > 0 else 0.0
+        )
+
+        recent_stop_count = sum(
+            1 for s in self._stop_steps if (t - s) <= STOP_CLUSTER_WINDOW_BARS
+        )
+
+        same_side_reentry = (
+            not stop_triggered
+            and self._last_stopped_side != 0
+            and current_side != 0
+            and current_side == self._last_stopped_side
+            and prev_side != current_side
+            and 0 < self._bars_since_stop <= SAME_SIDE_REENTRY_WINDOW_BARS
+        )
+
+        reward_context = {
+            "stop_triggered": stop_triggered,
+            "recent_stop_count": recent_stop_count,
+            "same_side_reentry": same_side_reentry,
+            "current_drawdown": current_drawdown,
+        }
+
+        reward = self.reward_fn(old_equity, new_equity, context=reward_context)
 
         # -------------------------------
         # Update equity for next step

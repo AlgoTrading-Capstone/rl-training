@@ -75,11 +75,33 @@ MAX_POSITION_BTC = 18.0
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
 TRANSACTION_FEE = 0.0005
 
-# Reward function selection: "log_return", "asymmetric"
-REWARD_FUNCTION = "asymmetric"
+# Reward function selection: "log_return", "asymmetric", "stop_aware_drawdown"
+REWARD_FUNCTION = "stop_aware_drawdown"
 
 # Downside weight for asymmetric reward function. Higher values increase the penalty for negative returns.
 DOWNSIDE_WEIGHT = 2.0
+
+# ============================================================
+# Stop-Aware Drawdown Reward Configuration
+# ============================================================
+
+# Number of bars to look back for counting recent stop-loss events.
+STOP_CLUSTER_WINDOW_BARS = 20
+
+# Base penalty per stop event, multiplied by the number of recent stops in the window.
+STOP_CLUSTER_PENALTY = 0.02
+
+# Number of bars after a stop within which a same-side re-entry is penalized.
+SAME_SIDE_REENTRY_WINDOW_BARS = 10
+
+# Flat penalty for re-entering the same side within the window after a stop.
+SAME_SIDE_REENTRY_PENALTY = 0.03
+
+# Drawdown fraction below which no penalty is applied.
+DRAWDOWN_PENALTY_THRESHOLD = 0.05
+
+# Linear weight for drawdown penalty above the threshold.
+DRAWDOWN_PENALTY_WEIGHT = 1.0
 
 # Percentage of the dataset used for training, the remainder is used for testing.
 # Example: 0.75 = 75% train, 25% test.
@@ -200,7 +222,7 @@ ENABLE_STRATEGIES = True
 # Empty list = no strategies (signal_ary will be empty)
 STRATEGY_LIST = [
     "SupertrendStrategy",                             # Supertrend Legacy (pre-converter baseline)
-"EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
+    "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
     "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
     "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
     "TrendmasterPro23WithAlertsStrategy",
