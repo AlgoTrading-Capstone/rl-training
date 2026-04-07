@@ -106,6 +106,9 @@ class StepLogger:
         for name, value in state_human.get("turbulence", {}).items():
             row[name] = value
 
+        for name, value in state_human.get("position_context", {}).items():
+            row[name] = value
+
         # Strategies (single decision per strategy)
         for strategy_name, decision in strategy_decisions.items():
             row[strategy_name] = decision

@@ -8,7 +8,10 @@ from config import INITIAL_BALANCE, MAX_POSITION_BTC, ENABLE_TURBULENCE,EXTERNAL
 
 
 
-def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, holdings):
+def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, holdings,
+                    position_side=0, exposure_norm=0.0, entry_price_rel=0.0,
+                    unrealized_pnl_pct=0.0, stop_distance_pct=0.0,
+                    bars_in_position=0, bars_since_stop=-1):
     """
     Normalization for Bitcoin RL Environment.
 
@@ -107,6 +110,21 @@ def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, ho
         norm_holdings = 0.0
 
     # ---------------------------------------------------------
+    # Position Context Features (7 features)
+    # ---------------------------------------------------------
+    norm_position_side = float(position_side)                           # already in {-1, 0, +1}
+    norm_exposure = float(np.clip(exposure_norm, -1.0, 1.0))           # already bounded by caller
+    norm_entry_rel = float(np.tanh(entry_price_rel * 10.0))            # squash small % diffs
+    norm_unrealized_pnl = float(np.tanh(unrealized_pnl_pct * 10.0))    # squash pnl fraction
+    norm_stop_dist = float(np.tanh(stop_distance_pct * 20.0))          # stops are close → tighter scale
+    norm_bars_in_pos = float(np.tanh(bars_in_position / 100.0))        # log-like saturation
+
+    if bars_since_stop < 0:
+        norm_bars_since_stop = 1.0   # never stopped → "long time ago" sentinel
+    else:
+        norm_bars_since_stop = float(np.tanh(bars_since_stop / 50.0))  # 0 = just stopped
+
+    # ---------------------------------------------------------
     # Combine State
     # ---------------------------------------------------------
     # Stack all features into a single 1D vector
@@ -117,7 +135,14 @@ def normalize_state(balance, price_vec, tech_vec, turbulence_vec, signal_vec, ho
             norm_tech,
             norm_turbulence,
             norm_signal,
-            [norm_holdings]
+            [norm_holdings],
+            [norm_position_side],
+            [norm_exposure],
+            [norm_entry_rel],
+            [norm_unrealized_pnl],
+            [norm_stop_dist],
+            [norm_bars_in_pos],
+            [norm_bars_since_stop],
         )
     ).astype(np.float32) # Cast to float32: Standard input format for Deep Learning models
 
@@ -257,5 +282,22 @@ def inverse_normalize_state(
         result["holdings"] = float(norm_holdings * MAX_POSITION_BTC)
     else:
         result["holdings"] = 0.0
+    idx += 1
+
+    # ---------------------------------------------------------
+    # Position Context (7 features, added v2)
+    # Guard with bounds check for backward compat with old states.
+    # ---------------------------------------------------------
+    pos_ctx = {}
+    _pc_names = [
+        "position_side", "exposure_norm", "entry_price_rel_tanh",
+        "unrealized_pnl_tanh", "stop_distance_tanh",
+        "bars_in_position_tanh", "bars_since_stop_tanh",
+    ]
+    for name in _pc_names:
+        if idx < len(state_norm):
+            pos_ctx[name] = float(state_norm[idx])
+            idx += 1
+    result["position_context"] = pos_ctx
 
     return result

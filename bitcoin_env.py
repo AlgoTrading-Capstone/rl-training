@@ -108,6 +108,11 @@ class BitcoinTradingEnv:
         self.prev_equity = float(self.initial_balance)
         self.episode_return = 0.0  # Final episode profit ratio (total_asset / initial_balance)
 
+        # Position context bookkeeping (for state features)
+        self._bars_in_position = 0
+        self._bars_since_stop = -1   # -1 = never stopped this episode
+        self._last_position_side = 0 # -1 short, 0 flat, +1 long
+
         # ------------------------------------------------------------
         # Environment dimensions (state & action)
         # ------------------------------------------------------------
@@ -117,7 +122,8 @@ class BitcoinTradingEnv:
         signal_dim = self.signal_ary.shape[1]
 
         # State includes: balance, price features, indicators, turbulence, strategy signals, position size
-        self.state_dim = 1 + price_dim + tech_dim + turbulence_dim + signal_dim + 1
+        # + 7 position context features (side, exposure, entry_rel, pnl, stop_dist, bars_in_pos, bars_since_stop)
+        self.state_dim = 1 + price_dim + tech_dim + turbulence_dim + signal_dim + 1 + 7
 
         # Action space: action = [a_pos, a_sl]
         # a_pos ∈ [-1, +1] - desired exposure: -1 = max short, 0 = flat, +1 = max long
@@ -157,6 +163,11 @@ class BitcoinTradingEnv:
         self.prev_equity = float(self.initial_balance)
         self.episode_return = 0.0
 
+        # Reset position context bookkeeping
+        self._bars_in_position = 0
+        self._bars_since_stop = -1
+        self._last_position_side = 0
+
         # Load first timestep features
         self.current_price = self.price_ary[self.step_idx]
         self.current_tech = self.tech_ary[self.step_idx]
@@ -164,7 +175,7 @@ class BitcoinTradingEnv:
         self.current_signal = self.signal_ary[self.step_idx]
         self.current_datetime = self.datetime_ary[self.step_idx]
 
-        # Build initial normalized state
+        # Build initial normalized state (flat position defaults)
         state = normalize_state(
             balance=self.position.balance,
             price_vec=self.current_price,
@@ -172,6 +183,13 @@ class BitcoinTradingEnv:
             turbulence_vec=self.current_turbulence,
             signal_vec=self.current_signal,
             holdings=self.position.holdings,
+            position_side=0,
+            exposure_norm=0.0,
+            entry_price_rel=0.0,
+            unrealized_pnl_pct=0.0,
+            stop_distance_pct=0.0,
+            bars_in_position=0,
+            bars_since_stop=-1,
         )
 
         return state
@@ -265,6 +283,25 @@ class BitcoinTradingEnv:
         self.position = result.new_state
 
         # -------------------------------
+        # Position context bookkeeping
+        # -------------------------------
+        if stop_triggered:
+            self._bars_since_stop = 0
+        elif self._bars_since_stop >= 0:
+            self._bars_since_stop += 1
+
+        if np.isclose(self.position.holdings, 0.0):
+            current_side = 0
+        else:
+            current_side = 1 if self.position.holdings > 0 else -1
+
+        if current_side == 0 or current_side != self._last_position_side:
+            self._bars_in_position = 0
+        else:
+            self._bars_in_position += 1
+        self._last_position_side = current_side
+
+        # -------------------------------
         # Compute new equity & reward
         # -------------------------------
         new_equity = compute_equity(
@@ -298,6 +335,38 @@ class BitcoinTradingEnv:
             self.current_datetime = self.datetime_ary[self.step_idx]
 
         # -------------------------------
+        # Compute position context for next state
+        # (relative to the candle the agent will observe)
+        # -------------------------------
+        next_close = float(self.current_price[3])
+        equity_at_obs = compute_equity(
+            self.position.balance, self.position.holdings, next_close
+        )
+
+        if equity_at_obs > 0.0 and self.leverage_limit > 0.0:
+            max_notional = self.leverage_limit * equity_at_obs
+            _exposure_norm = float(np.clip(
+                (self.position.holdings * next_close) / max_notional, -1.0, 1.0
+            ))
+        else:
+            _exposure_norm = 0.0
+
+        if current_side != 0 and self.position.entry_price is not None and next_close > 0:
+            _entry_price_rel = self.position.entry_price / next_close - 1.0
+        else:
+            _entry_price_rel = 0.0
+
+        if current_side != 0 and self.position.entry_price is not None and self.position.entry_price > 0:
+            _unrealized_pnl_pct = current_side * (next_close / self.position.entry_price - 1.0)
+        else:
+            _unrealized_pnl_pct = 0.0
+
+        if current_side != 0 and self.position.stop_price is not None and next_close > 0:
+            _stop_distance_pct = self.position.stop_price / next_close - 1.0
+        else:
+            _stop_distance_pct = 0.0
+
+        # -------------------------------
         # Build next state
         # -------------------------------
         next_state = normalize_state(
@@ -307,6 +376,13 @@ class BitcoinTradingEnv:
             turbulence_vec=self.current_turbulence,
             signal_vec=self.current_signal,
             holdings=self.position.holdings,
+            position_side=current_side,
+            exposure_norm=_exposure_norm,
+            entry_price_rel=_entry_price_rel,
+            unrealized_pnl_pct=_unrealized_pnl_pct,
+            stop_distance_pct=_stop_distance_pct,
+            bars_in_position=self._bars_in_position,
+            bars_since_stop=self._bars_since_stop,
         )
 
         # -------------------------------
