@@ -22,7 +22,7 @@ LEARNING_RATE = 3e-4
 # Recommended defaults:
 # Medium state (~15-33 strategies): [128, 128]
 # Large  state (33+ strategies): [256, 256]
-NET_DIMS = [128, 128]
+NET_DIMS = [256, 256]
 
 # Maximum number of environment interaction steps for training.
 # This value does NOT represent the length of the dataset. Instead, it controls how many TOTAL steps the agent is allowed to interact with the environment across ALL episodes.
@@ -44,7 +44,7 @@ NET_DIMS = [128, 128]
 # ------
 # PPO usually requires more total steps than off-policy methods (e.g. SAC)
 # Increasing TOTAL_TRAINING_STEPS increases training time linearly
-TOTAL_TRAINING_STEPS = int(3e5)
+TOTAL_TRAINING_STEPS = int(5e5)
 
 # Initial cash balance in USD at the beginning of each training/test episode (one full simulation run over a selected historical time window).
 INITIAL_BALANCE = 100_000
@@ -69,7 +69,7 @@ STOP_UPDATE_DEADZONE_PCT = 0.002  # 0.2% of price
 
 # Hard cap on absolute BTC position size (long or short).
 # Prevents the agent from taking excessive exposure, even when leverage is available.
-MAX_POSITION_BTC = 18.0
+MAX_POSITION_BTC = 4.0
 
 # Transaction fee applied to each executed MARKET (taker) order (as a fraction).
 # On Kraken Futures a typical taker fee is approximately 0.05% → TRANSACTION_FEE = 0.0005
@@ -89,19 +89,19 @@ DOWNSIDE_WEIGHT = 2.0
 STOP_CLUSTER_WINDOW_BARS = 20
 
 # Base penalty per stop event, multiplied by the number of recent stops in the window.
-STOP_CLUSTER_PENALTY = 0.02
+STOP_CLUSTER_PENALTY = 0.005
 
 # Number of bars after a stop within which a same-side re-entry is penalized.
 SAME_SIDE_REENTRY_WINDOW_BARS = 10
 
 # Flat penalty for re-entering the same side within the window after a stop.
-SAME_SIDE_REENTRY_PENALTY = 0.03
+SAME_SIDE_REENTRY_PENALTY = 0.01
 
 # Drawdown fraction below which no penalty is applied.
 DRAWDOWN_PENALTY_THRESHOLD = 0.05
 
 # Linear weight for drawdown penalty above the threshold.
-DRAWDOWN_PENALTY_WEIGHT = 1.0
+DRAWDOWN_PENALTY_WEIGHT = 0.10
 
 # Percentage of the dataset used for training, the remainder is used for testing.
 # Example: 0.75 = 75% train, 25% test.
@@ -175,7 +175,7 @@ EXTERNAL_ASSETS = [
 # Slippage applied to market orders as a fraction of price (e.g. 0.0001 = 0.01%).
 # Sampled per trade from a lognormal distribution: lognormal(ln(SLIPPAGE_MEAN), SLIPPAGE_STD).
 SLIPPAGE_MEAN = 0.0003
-SLIPPAGE_STD = 0.5
+SLIPPAGE_STD = 0.25
 
 # Name of the machine where training is performed.
 TRAINING_MACHINE_NAME = "OmerPC"

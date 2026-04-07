@@ -27,6 +27,7 @@ PPO_CONFIG = {
     "lambda_gae_adv": 0.95,    # GAE lambda (bias/variance tradeoff)
     "lambda_entropy": 0.01,    # Exploration encouragement
     "if_use_vtrace": True,     # Use V-trace off-policy correction
+    "reward_scale": 2 ** 7,    # Scale log-return rewards (~1e-4) to critic-friendly magnitude
 }
 
 SAC_CONFIG = {
