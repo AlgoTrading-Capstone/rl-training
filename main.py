@@ -74,8 +74,8 @@ def run_training_pipeline(
             turb_dim = turbulence_array.shape[1]
             sig_dim = signal_array.shape[1]
 
-            # State = balance + price features + indicators + turbulence & VIX + strategies signals + position
-            state_dim = 1 + price_dim + tech_dim + turb_dim + sig_dim + 1
+            # State = balance + price features + indicators + turbulence & VIX + strategies signals + position + 7 position context features
+            state_dim = 1 + price_dim + tech_dim + turb_dim + sig_dim + 1 + 7
 
             # Action = position size + stop-loss
             action_dim = 2
