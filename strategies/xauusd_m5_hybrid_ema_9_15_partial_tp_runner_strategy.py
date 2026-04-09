@@ -4,7 +4,7 @@ import pandas as pd
 import talib
 
 from strategies.base_strategy import BaseStrategy, StrategyRecommendation, SignalType
-from strategies.utils.resampling import resample_to_interval, resampled_merge
+from utils.resampling import resample_to_interval, resampled_merge
 
 
 class XauusdM5HybridEma915PartialTpRunnerStrategy(BaseStrategy):

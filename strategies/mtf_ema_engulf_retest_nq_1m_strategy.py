@@ -24,12 +24,12 @@ import pandas as pd
 import talib
 
 from strategies.base_strategy import BaseStrategy, SignalType, StrategyRecommendation
-from strategies.utils.resampling import (
+from utils.resampling import (
     compute_interval_minutes,
     resample_to_interval,
     resampled_merge,
 )
-from src.utils.timeframes import timeframe_to_minutes
+from utils.timeframes import timeframe_to_minutes
 
 
 class MtfEmaEngulfRetestNq1MStrategy(BaseStrategy):
