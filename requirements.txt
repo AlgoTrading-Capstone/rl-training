@@ -1,32 +1,54 @@
-# Core ML/RL
-numpy>=1.24.0
+# =============================================================================
+# PyTorch — MUST be installed BEFORE running pip install -r requirements.txt
+# The default PyPI build is CPU-only. Use the CUDA 12.1 wheel instead:
+#
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+# To verify your install:
+#   python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
+#
+# Check compatible CUDA versions at: https://pytorch.org/get-started/locally/
+# =============================================================================
+
+
+# --- Core numerics ---
+numpy>=2.0.0
 pandas>=2.0.0
-torch>=2.0.0
-stable-baselines3>=2.0.0
 
-# FinRL (if using)
-finrl>=0.3.0
+# --- RL framework ---
+# ElegantRL is vendored locally in elegantrl/ (snapshot from AI4Finance-Foundation/ElegantRL).
+# Do NOT install it via pip. Its only runtime deps are torch + numpy (above).
+gymnasium>=1.0.0          # Used internally by the vendored elegantrl code
 
-# Exchange connectivity
+# --- Deep learning (see CUDA note at top) ---
+# torch>=2.5.0            # Install via --index-url, NOT from PyPI (see above)
+
+# --- Exchange connectivity ---
 ccxt>=4.0.0
 
-# Technical analysis
-TA-Lib>=0.4.28
+# --- Technical analysis ---
+TA-Lib>=0.4.28            # Requires system-level TA-Lib C library first:
+                          #   Windows: install from https://github.com/cgohlke/talib-binary
+                          #   Linux:   apt install libta-lib-dev
+                          #   macOS:   brew install ta-lib
 
+# --- Data storage (Parquet) ---
+pyarrow>=12.0.0           # Primary Parquet engine for pandas read/write_parquet
+fastparquet>=2023.4.0     # Fallback Parquet engine
 
-# Data storage
-pyarrow>=12.0.0
-fastparquet>=2023.4.0
+# --- Plotting & visualization ---
+matplotlib>=3.8.0         # Used in backtesting plots
 
-# Utilities
-python-dateutil>=2.8.2
-tqdm>=4.65.0
+# --- Market data ---
+yfinance>=0.2.0           # VIX / benchmark data
 
-# Logging
+# --- Logging & UI ---
 loguru>=0.7.0
+rich>=13.7.0              # Terminal UI (prompts, panels, progress)
+tqdm>=4.65.0              # Progress bars
 
-# User interface
-rich>=13.7.0
+# --- Utilities ---
+python-dateutil>=2.8.2    # Date parsing helpers
 
-# Add yfinance for real VIX data
-yfinance>=0.2.0
+# --- Testing ---
+pytest>=7.0.0

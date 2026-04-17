@@ -7,7 +7,17 @@ from datetime import datetime
 
 import config
 from data.data_manager import DataManager
-from utils.user_input import collect_run_mode, collect_train_and_backtest_input, collect_train_only_input, collect_backtest_only_input
+from data.load_features import _get_processed_path
+from utils.run_artifacts import (
+    ensure_feature_cache,
+    finalize_training_signal_artifacts,
+    log_run_artifact_summary,
+)
+from utils.user_input import (
+    collect_run_mode, collect_train_and_backtest_input,
+    collect_train_only_input, collect_backtest_only_input,
+    collect_gpu_preference,
+)
 from utils.metadata import create_metadata_file, load_metadata, append_backtest_metadata
 from utils.logger import RLLogger, LogComponent
 from utils.formatting import Formatter
@@ -21,6 +31,8 @@ def run_training_pipeline(
     run_path: Path,
     manager: DataManager,
     logger: RLLogger,
+    *,
+    use_gpu: bool = True,
 ) -> None:
     """
     Execute the full RL training pipeline using ElegantRL.
@@ -47,7 +59,7 @@ def run_training_pipeline(
             logger.info(f"Loading data for training: {train_start} to {train_end}")
 
             # Fetch arrays for training
-            price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
+            price_array, tech_array, turbulence_array, signal_array, datetime_array, strategy_names = manager.get_arrays(
                 start_date=train_start,
                 end_date=train_end,
                 strategy_list=strategy_list,
@@ -112,12 +124,14 @@ def run_training_pipeline(
                 turbulence_array=turbulence_array,
                 signal_array=signal_array,
                 datetime_array=datetime_array,
+                strategy_names=strategy_names,
                 state_dim=state_dim,
                 action_dim=action_dim,
                 train_max_step=train_max_step,
                 eval_max_step=eval_max_step,
                 run_path=run_path,
                 logger=logger,
+                use_gpu=use_gpu,
             )
 
             logger.info("ElegantRL configuration built successfully")
@@ -136,8 +150,9 @@ def run_training_pipeline(
     with logger.phase("Agent Training", 4, 5):
         try:
             logger.info(f"Starting {config.RL_MODEL} training (max steps: {config.TOTAL_TRAINING_STEPS})")
-            train_agent(erl_config)
+            train_agent(erl_config, if_single_process=True)
             logger.info("Training completed successfully")
+            finalize_training_signal_artifacts(run_path, logger)
 
         except KeyboardInterrupt:
             logger.warning("TRAINING INTERRUPTED BY USER")
@@ -231,7 +246,7 @@ def run_backtest_pipeline(
         try:
             strategy_list = config.STRATEGY_LIST if config.ENABLE_STRATEGIES else []
 
-            price_array, tech_array, turbulence_array, signal_array, datetime_array = manager.get_arrays(
+            price_array, tech_array, turbulence_array, signal_array, datetime_array, strategy_names = manager.get_arrays(
                 start_date=backtest_config["start_date"],
                 end_date=backtest_config["end_date"],
                 strategy_list=strategy_list,
@@ -263,6 +278,7 @@ def run_backtest_pipeline(
                 turbulence_array=turbulence_array,
                 signal_array=signal_array,
                 datetime_array=datetime_array,
+                strategy_names=strategy_names,
                 out_dir=backtest_dir,
                 backtest_config=backtest_config,
                 logger=logger,
@@ -308,6 +324,7 @@ def run_backtest_pipeline(
 def main():
     # Initialize active logger reference (before run_path is created)
     active_logger = RLLogger(run_path=None, log_level=config.LOG_LEVEL)
+    run_path: Path | None = None
 
     # --------------------------------------------------------
     # STEP 0: Initialize shared DataManager
@@ -337,6 +354,8 @@ def main():
 
         if run_mode == "TRAIN_AND_BACKTEST":
             metadata, backtest_config, run_path = collect_train_and_backtest_input()
+            use_gpu = collect_gpu_preference()
+            metadata["training"]["use_gpu"] = use_gpu
 
             # Re-initialize logger with run_path for file logging
             active_logger = RLLogger(
@@ -352,11 +371,20 @@ def main():
             # Display configuration
             Formatter.display_training_config(metadata, active_logger)
             create_metadata_file(metadata, run_path, active_logger)
-            run_training_pipeline(metadata, run_path, manager, active_logger)
+            ensure_feature_cache(
+                manager, active_logger, metadata,
+                strategy_list=config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
+            )
+            run_training_pipeline(
+                metadata, run_path, manager, active_logger,
+                use_gpu=use_gpu,
+            )
             run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
 
         elif run_mode == "TRAIN_ONLY":
             metadata, run_path = collect_train_only_input()
+            use_gpu = collect_gpu_preference()
+            metadata["training"]["use_gpu"] = use_gpu
 
             # Re-initialize logger with run_path for file logging
             active_logger = RLLogger(
@@ -373,7 +401,14 @@ def main():
             Formatter.display_training_config(metadata, active_logger)
 
             create_metadata_file(metadata, run_path, active_logger)
-            run_training_pipeline(metadata, run_path, manager, active_logger)
+            ensure_feature_cache(
+                manager, active_logger, metadata,
+                strategy_list=config.STRATEGY_LIST if config.ENABLE_STRATEGIES else [],
+            )
+            run_training_pipeline(
+                metadata, run_path, manager, active_logger,
+                use_gpu=use_gpu,
+            )
 
         elif run_mode == "BACKTEST_ONLY":
             backtest_config, run_path = collect_backtest_only_input()
@@ -392,6 +427,12 @@ def main():
             run_backtest_pipeline(backtest_config, run_path, manager, active_logger)
 
         active_logger.success("Session completed successfully")
+        if run_path is not None:
+            cache_path = _get_processed_path()
+            log_run_artifact_summary(
+                run_path, active_logger,
+                parquet_cache=cache_path if cache_path.exists() else None,
+            )
 
     except KeyboardInterrupt:
         active_logger.warning("Execution interrupted by user.")

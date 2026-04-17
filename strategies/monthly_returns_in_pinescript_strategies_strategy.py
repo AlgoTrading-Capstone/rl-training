@@ -14,29 +14,33 @@ def _pivot_high(series: pd.Series, left_bars: int, right_bars: int) -> pd.Series
       - series[i] >= all of series[i-left_bars : i]   (left side)
       - series[i] >= all of series[i+1 : i+right_bars+1]  (right side)
     The result value is placed at index i + right_bars to match Pine's reporting.
+
+    Uses rolling-window operations instead of a Python loop for performance.
     """
-    n = len(series)
-    result = np.full(n, np.nan)
-    arr = series.to_numpy(dtype=float)
-    for i in range(left_bars, n - right_bars):
-        candidate = arr[i]
-        if candidate >= arr[i - left_bars: i].max() and candidate >= arr[i + 1: i + right_bars + 1].max():
-            result[i + right_bars] = candidate
-    return pd.Series(result, index=series.index)
+    # Left side: candidate must equal the rolling max over (left_bars + 1) window
+    left_max = series.rolling(window=left_bars + 1, min_periods=left_bars + 1).max()
+    # Right side: reverse the series, rolling max, then reverse back
+    right_max = series.iloc[::-1].rolling(window=right_bars + 1, min_periods=right_bars + 1).max().iloc[::-1]
+
+    is_pivot = (series == left_max) & (series == right_max)
+    result = pd.Series(np.nan, index=series.index)
+    result[is_pivot] = series[is_pivot]
+    # Shift by right_bars to match Pine's delayed reporting
+    return result.shift(right_bars)
 
 
 def _pivot_low(series: pd.Series, left_bars: int, right_bars: int) -> pd.Series:
     """
     Vectorised equivalent of Pine's pivotlow(leftBars, rightBars).
+    Uses rolling-window operations instead of a Python loop for performance.
     """
-    n = len(series)
-    result = np.full(n, np.nan)
-    arr = series.to_numpy(dtype=float)
-    for i in range(left_bars, n - right_bars):
-        candidate = arr[i]
-        if candidate <= arr[i - left_bars: i].min() and candidate <= arr[i + 1: i + right_bars + 1].min():
-            result[i + right_bars] = candidate
-    return pd.Series(result, index=series.index)
+    left_min = series.rolling(window=left_bars + 1, min_periods=left_bars + 1).min()
+    right_min = series.iloc[::-1].rolling(window=right_bars + 1, min_periods=right_bars + 1).min().iloc[::-1]
+
+    is_pivot = (series == left_min) & (series == right_min)
+    result = pd.Series(np.nan, index=series.index)
+    result[is_pivot] = series[is_pivot]
+    return result.shift(right_bars)
 
 
 class MonthlyReturnsInPinescriptStrategiesStrategy(BaseStrategy):
@@ -56,54 +60,47 @@ class MonthlyReturnsInPinescriptStrategiesStrategy(BaseStrategy):
         )
         self.left_bars = 2
         self.right_bars = 1
-        # Dynamic RL warmup: 3× the pivot detection window
+        # Dynamic RL warmup: 3x the pivot detection window
         self.MIN_CANDLES_REQUIRED = 3 * (self.left_bars + self.right_bars)
 
     def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
         if len(df) < self.MIN_CANDLES_REQUIRED:
             return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)
 
-        # --- Pivot detection ---
+        # --- Pivot detection (vectorised) ---
         swh = _pivot_high(df["high"], self.left_bars, self.right_bars)
         swl = _pivot_low(df["low"], self.left_bars, self.right_bars)
 
-        # hprice / lprice: last confirmed pivot price, forward-filled
-        hprice = swh.ffill().fillna(0.0)
-        lprice = swl.ffill().fillna(0.0)
+        # Last confirmed pivot levels, forward-filled.
+        hprice = swh.ffill()
+        lprice = swl.ffill()
 
-        # --- Stateful le / se flags (depend on own previous value) ---
-        swh_arr = swh.to_numpy(dtype=float)
-        swl_arr = swl.to_numpy(dtype=float)
         high_arr = df["high"].to_numpy(dtype=float)
         low_arr = df["low"].to_numpy(dtype=float)
         hprice_arr = hprice.to_numpy(dtype=float)
         lprice_arr = lprice.to_numpy(dtype=float)
 
-        n = len(df)
-        le = np.zeros(n, dtype=bool)
-        se = np.zeros(n, dtype=bool)
+        idx = len(df) - 1
+        prev_idx = idx - 1
 
-        for i in range(1, n):
-            # Long entry flag
-            if not np.isnan(swh_arr[i]):
-                le[i] = True
-            elif le[i - 1] and high_arr[i] > hprice_arr[i]:
-                le[i] = False
-            else:
-                le[i] = le[i - 1]
+        has_long_level = not np.isnan(hprice_arr[idx]) and not np.isnan(hprice_arr[prev_idx])
+        has_short_level = not np.isnan(lprice_arr[idx]) and not np.isnan(lprice_arr[prev_idx])
 
-            # Short entry flag
-            if not np.isnan(swl_arr[i]):
-                se[i] = True
-            elif se[i - 1] and low_arr[i] < lprice_arr[i]:
-                se[i] = False
-            else:
-                se[i] = se[i - 1]
+        long_pulse = (
+            has_long_level
+            and high_arr[prev_idx] <= hprice_arr[prev_idx]
+            and high_arr[idx] > hprice_arr[idx]
+        )
+        short_pulse = (
+            has_short_level
+            and low_arr[prev_idx] >= lprice_arr[prev_idx]
+            and low_arr[idx] < lprice_arr[idx]
+        )
 
-        # --- Signal from the last bar ---
-        if le[-1]:
+        # Emit a pulse only on the breakout bar itself.
+        if long_pulse and not short_pulse:
             return StrategyRecommendation(signal=SignalType.LONG, timestamp=timestamp)
-        if se[-1]:
+        if short_pulse and not long_pulse:
             return StrategyRecommendation(signal=SignalType.SHORT, timestamp=timestamp)
 
         return StrategyRecommendation(signal=SignalType.HOLD, timestamp=timestamp)

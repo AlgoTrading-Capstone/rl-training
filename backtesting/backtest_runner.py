@@ -38,6 +38,7 @@ def run_backtest(
     turbulence_array: np.ndarray,
     signal_array: np.ndarray,
     datetime_array: np.ndarray,
+    strategy_names: List[str],
     out_dir: str | Path,
     backtest_config: Dict[str, Any],
     logger: RLLogger,
@@ -87,6 +88,7 @@ def run_backtest(
         turbulence_array=turbulence_array,
         signal_ary=signal_array,
         datetime_ary=datetime_array,
+        strategy_names=strategy_names,
         mode="backtest",
     )
 
@@ -254,7 +256,7 @@ def run_backtest(
     # --------------------------------------------------------
     # STEP 4: Run episode
     # --------------------------------------------------------
-    step_logger = StepLogger(out_dir)
+    step_logger = StepLogger(out_dir, strategy_names=strategy_names)
     debug_logger = StateDebugLogger(out_dir)
     trade_tracker = TradeTracker(out_dir)
 

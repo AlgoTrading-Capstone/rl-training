@@ -1,3 +1,8 @@
+import csv
+import os
+from pathlib import Path
+from typing import Optional
+
 import numpy as np
 
 from config import (
@@ -13,6 +18,8 @@ from config import (
     REWARD_FUNCTION,
     STOP_CLUSTER_WINDOW_BARS,
     SAME_SIDE_REENTRY_WINDOW_BARS,
+    STRATEGY_LIST,
+    ENABLE_STRATEGIES,
 )
 
 from utils.normalization import normalize_state
@@ -29,7 +36,13 @@ from trade_engine import (
 
 class BitcoinTradingEnv:
 
-    def __init__(self, price_ary, tech_ary, turbulence_array, signal_ary, datetime_ary, mode="train"):
+    def __init__(self, price_ary, tech_ary, turbulence_array, signal_ary, datetime_ary,
+                 strategy_names=None,
+                 mode="train", signal_log_path: Optional[str] = None,
+                 signal_log_dir: Optional[str] = None,
+                 signal_log_filename: Optional[str] = None,
+                 signal_log_flush_every: int = 100,
+                 signal_log_worker_id: Optional[str] = None):
         """
         RL Trading Environment for Bitcoin.
         price_ary:        np.ndarray - price features
@@ -38,10 +51,27 @@ class BitcoinTradingEnv:
         signal_ary:       np.ndarray - strategy outputs
         datetime_ary:     np.ndarray - datetime for backtesting
         mode:             "train" | "test" | "backtest"
+        signal_log_path:  Optional path to write strategy_signals_log.csv
         """
 
         assert mode in ["train", "test", "backtest"], "mode must be 'train', 'test', or 'backtest'."
         self.mode = mode
+        self.strategy_names = list(strategy_names) if strategy_names is not None else list(STRATEGY_LIST)
+
+        # Signal logging (strategy visibility)
+        self._signal_log_flush_every = max(1, int(signal_log_flush_every))
+        self._signal_log_worker_id = (
+            str(signal_log_worker_id)
+            if signal_log_worker_id is not None
+            else (str(os.getpid()) if mode == "train" and signal_log_dir and not signal_log_filename else None)
+        )
+        self._signal_log_path = self._resolve_signal_log_path(
+            signal_log_path=signal_log_path,
+            signal_log_dir=signal_log_dir,
+            signal_log_filename=signal_log_filename,
+        )
+        self._signal_log_buffer = []
+        self._signal_log_fieldnames = None
 
         # ------------------------------------------------------------
         # Basic sanity checks on input arrays
@@ -61,6 +91,11 @@ class BitcoinTradingEnv:
         # Warn if no strategy signals are provided
         if signal_ary.shape[1] == 0:
             print("Warning: No strategy signals (ENABLE_STRATEGIES=False or empty STRATEGY_LIST). Environment will run without strategy features in state space.")
+        elif signal_ary.shape[1] != 4 * len(self.strategy_names):
+            raise ValueError(
+                f"signal_ary width mismatch: got {signal_ary.shape[1]}, "
+                f"expected {4 * len(self.strategy_names)} from strategy_names."
+            )
 
         # ------------------------------------------------------------
         # Load configuration values
@@ -152,12 +187,95 @@ class BitcoinTradingEnv:
         self.current_signal = self.signal_ary[0]
         self.current_datetime = self.datetime_ary[0]
 
+    def _resolve_signal_log_path(
+        self,
+        *,
+        signal_log_path: Optional[str],
+        signal_log_dir: Optional[str],
+        signal_log_filename: Optional[str],
+    ) -> Optional[Path]:
+        """Resolve the final CSV path for signal logging."""
+        if signal_log_path:
+            return Path(signal_log_path)
+        if not signal_log_dir:
+            return None
+
+        log_dir = Path(signal_log_dir)
+        if signal_log_filename:
+            return log_dir / signal_log_filename
+
+        if self.mode == "train":
+            worker_id = self._signal_log_worker_id or str(os.getpid())
+            return log_dir / f"strategy_signals_train_worker_{worker_id}.csv"
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Signal logging helpers
+    # ------------------------------------------------------------------
+
+    def _decode_signal_vec(self, sig_vec: np.ndarray) -> dict:
+        """Decode one-hot signal vector into {strategy_name: signal_label} dict."""
+        if not ENABLE_STRATEGIES or sig_vec is None or len(sig_vec) == 0:
+            return {}
+        labels = {0: "FLAT", 1: "LONG", 2: "SHORT", 3: "HOLD"}
+        decisions = {}
+        idx = 0
+        for name in self.strategy_names:
+            if idx + 4 > len(sig_vec):
+                break
+            s = sig_vec[idx: idx + 4]
+            idx += 4
+            hot = int(np.argmax(s)) if np.any(s) else 3
+            decisions[name] = labels.get(hot, "UNKNOWN")
+        return decisions
+
+    def _log_signal_row(self, step_idx, timestamp, sig_vec, a_pos, a_sl, reward, close_price):
+        """Append a signal log row to the in-memory buffer."""
+        if self._signal_log_path is None:
+            return
+        if hasattr(timestamp, "item"):
+            try:
+                timestamp = timestamp.item()
+            except ValueError:
+                pass
+        row = {
+            "step": step_idx,
+            "timestamp": timestamp,
+            "close": float(close_price),
+            "agent_exposure": float(a_pos),
+            "agent_stop_loss": float(a_sl),
+            "reward": float(reward),
+        }
+        if self._signal_log_worker_id is not None:
+            row["worker_id"] = self._signal_log_worker_id
+        row.update(self._decode_signal_vec(sig_vec))
+        self._signal_log_buffer.append(row)
+
+    def _flush_signal_log(self):
+        """Write buffered signal rows to CSV and clear the buffer."""
+        if self._signal_log_path is None or not self._signal_log_buffer:
+            return
+        self._signal_log_path.parent.mkdir(parents=True, exist_ok=True)
+        if self._signal_log_fieldnames is None:
+            self._signal_log_fieldnames = list(self._signal_log_buffer[0].keys())
+
+        write_header = not self._signal_log_path.exists() or self._signal_log_path.stat().st_size == 0
+        with open(self._signal_log_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=self._signal_log_fieldnames)
+            if write_header:
+                writer.writeheader()
+            writer.writerows(self._signal_log_buffer)
+        self._signal_log_buffer.clear()
 
     def reset(self):
         """
         Reset the environment at the beginning of an episode.
         Returns the initial normalized state.
         """
+
+        # Flush any accumulated signal log from previous episode
+        self._flush_signal_log()
 
         # Reset internal counters
         self.step_idx = 0
@@ -434,10 +552,28 @@ class BitcoinTradingEnv:
         )
 
         # -------------------------------
+        # Signal logging (strategy visibility)
+        # -------------------------------
+        # Use the signal_vec from the candle BEFORE time-advance (the one
+        # that was visible when the agent chose its action).
+        self._log_signal_row(
+            step_idx=t,
+            timestamp=t_datetime,
+            sig_vec=self.signal_ary[t] if t < len(self.signal_ary) else self.current_signal,
+            a_pos=a_pos,
+            a_sl=a_sl,
+            reward=reward,
+            close_price=close_p,
+        )
+        if len(self._signal_log_buffer) >= self._signal_log_flush_every:
+            self._flush_signal_log()
+
+        # -------------------------------
         # Final episode return
         # -------------------------------
         if done:
             self.episode_return = new_equity / self.initial_balance
+            self._flush_signal_log()
 
         # -------------------------------
         # Info dict for debugging/logs
@@ -455,3 +591,7 @@ class BitcoinTradingEnv:
         }
 
         return next_state, reward, done, info
+
+    def close(self):
+        """Flush any pending signal rows before shutdown."""
+        self._flush_signal_log()

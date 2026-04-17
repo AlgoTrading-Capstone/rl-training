@@ -64,12 +64,14 @@ def build_elegantrl_config(
     turbulence_array,
     signal_array,
     datetime_array,
+    strategy_names,
     state_dim: int,
     action_dim: int,
     train_max_step: int,
     eval_max_step: int,
     run_path: Path,
     logger,
+    use_gpu: bool = True,
 ) -> Config:
     if RL_MODEL not in SUPPORTED_RL_MODELS:
         raise ValueError(f"Unsupported RL_MODEL='{RL_MODEL}'. Supported: {SUPPORTED_RL_MODELS}")
@@ -102,12 +104,19 @@ def build_elegantrl_config(
         "turbulence_array": turbulence_array,
         "signal_array": signal_array,
         "datetime_array": datetime_array,
+        "strategy_names": strategy_names,
         "mode": "train",
     }
+
+    train_env_args["signal_log_dir"] = str(run_path)
+    train_env_args["signal_log_flush_every"] = 100
 
     eval_env_args = dict(train_env_args)
     eval_env_args["max_step"] = int(eval_max_step)
     eval_env_args["mode"] = "test"
+    eval_env_args["signal_log_dir"] = str(run_path)
+    eval_env_args["signal_log_filename"] = "strategy_signals_log.csv"
+    eval_env_args["signal_log_flush_every"] = 100
 
     # Enforce NET_DIMS[0] >= state_dim
     _validate_net_dims(train_env_args["state_dim"], NET_DIMS)
@@ -125,6 +134,9 @@ def build_elegantrl_config(
 
     # IMPORTANT: never delete the run folder contents
     erl_config.if_remove = False
+
+    # GPU selection
+    erl_config.gpu_id = 0 if use_gpu else -1
 
     # Reproducibility
     erl_config.random_seed = SEED

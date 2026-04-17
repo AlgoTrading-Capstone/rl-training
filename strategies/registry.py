@@ -8,29 +8,9 @@ This allows configuration-driven strategy selection without code changes.
 from typing import Dict, Type, List
 from strategies.base_strategy import BaseStrategy
 from strategies.supertrend_legacy_strategy import SupertrendStrategy
-from strategies.evasive_super_trend_strategy_source_select_strategy import EvasiveSuperTrendStrategySourceSelectStrategy
-from strategies.kama_trend_strategy import KamaTrendStrategy
-from strategies.new_tott_strategy import NewTottStrategy
-from strategies.trendmaster_pro_2_3_with_alerts_strategy import TrendmasterPro23WithAlertsStrategy
-from strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy import AllDayFuturesScalperEmaTrendCrossAtrBrackets
-from strategies.threecommas_bot_strategy import ThreeCommasBotStrategy
-from strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy import Ny15mOrbWithAFixedSlTpNasdaqStrategy
-from strategies.aleks_du_zero_lag_pro_safe_mode_strategy import AleksDuZeroLagProSafeModeStrategy
-from strategies.sovereign_execution_joat_strategy import SovereignExecutionJoatStrategy
-from strategies.gold_mtf_strategy import GoldMtfStrategy
-from strategies.quant_pullback_day_trade_strategy import QuantPullbackDayTradeStrategy
-from strategies.sensex_500_point_institutional_breakout_strategy import Sensex500PointInstitutionalBreakoutStrategy
-from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
-from strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy import GreerLeapSelfOptimizingXgboostApproxStatsStrategy
-from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
-from strategies.smc_fractal_strategy_jamol_v3_strategy import SmcFractalStrategyJamolV3
-from strategies.tasc_2026_03_one_percent_a_week_strategy import Tasc202603OnePercentAWeekStrategy
-from strategies.ema_pullback_adx_cvd_divergence_strategy import EmaPullbackAdxCvdDivergenceStrategy
-from strategies.kinetic_inertia_short_1h_strategy import KineticInertiaShort1hStrategy
-from strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy import XauusdM5HybridEma915PartialTpRunnerStrategy
 from strategies.pg_qsd_for_nifty_future_strategy import PgQsdForNiftyFutureStrategy
-from strategies.cdv_ema_cross_strategy_v6_strategy import CdvEmaCrossStrategyV6
-from strategies.mtf_ema_engulf_retest_nq_1m_strategy import MtfEmaEngulfRetestNq1MStrategy
+from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
+from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
 
 
 class StrategyRegistry:
@@ -40,32 +20,13 @@ class StrategyRegistry:
     """
 
     # Map strategy names to classes
+    # Only the 4 strategies that passed the 5% signal-activity variance filter.
+    # Dead strategies archived in archive_strategies/ — see strategy_post_mortem_analysis.md
     _STRATEGIES: Dict[str, Type[BaseStrategy]] = {
         "SupertrendStrategy": SupertrendStrategy,
-"EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
-        "KamaTrendStrategy": KamaTrendStrategy,
-        "NewTottStrategy": NewTottStrategy,
-        "TrendmasterPro23WithAlertsStrategy": TrendmasterPro23WithAlertsStrategy,
-        "AllDayFuturesScalperEmaTrendCrossAtrBrackets": AllDayFuturesScalperEmaTrendCrossAtrBrackets,
-        "ThreeCommasBotStrategy": ThreeCommasBotStrategy,
-        "Ny15mOrbWithAFixedSlTpNasdaqStrategy": Ny15mOrbWithAFixedSlTpNasdaqStrategy,
-            "AleksDuZeroLagProSafeModeStrategy": AleksDuZeroLagProSafeModeStrategy,
-            "SovereignExecutionJoatStrategy": SovereignExecutionJoatStrategy,
-            "GoldMtfStrategy": GoldMtfStrategy,
-            "QuantPullbackDayTradeStrategy": QuantPullbackDayTradeStrategy,
-            "Sensex500PointInstitutionalBreakoutStrategy": Sensex500PointInstitutionalBreakoutStrategy,
-            "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
-            "GreerLeapSelfOptimizingXgboostApproxStatsStrategy": GreerLeapSelfOptimizingXgboostApproxStatsStrategy,
-            "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
-            "SmcFractalStrategyJamolV3": SmcFractalStrategyJamolV3,
-            "Tasc202603OnePercentAWeekStrategy": Tasc202603OnePercentAWeekStrategy,
-            "EmaPullbackAdxCvdDivergenceStrategy": EmaPullbackAdxCvdDivergenceStrategy,
-            "EvasiveSuperTrendStrategySourceSelectStrategy": EvasiveSuperTrendStrategySourceSelectStrategy,
-            "KineticInertiaShort1hStrategy": KineticInertiaShort1hStrategy,
-            "XauusdM5HybridEma915PartialTpRunnerStrategy": XauusdM5HybridEma915PartialTpRunnerStrategy,
-            "PgQsdForNiftyFutureStrategy": PgQsdForNiftyFutureStrategy,
-            "CdvEmaCrossStrategyV6": CdvEmaCrossStrategyV6,
-            "MtfEmaEngulfRetestNq1MStrategy": MtfEmaEngulfRetestNq1MStrategy,
+        "PgQsdForNiftyFutureStrategy": PgQsdForNiftyFutureStrategy,
+        "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
+        "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
     }
 
     @classmethod

@@ -10,6 +10,7 @@ Handles:
 
 import json
 import shutil
+import sys
 import time
 import multiprocessing as mp
 from pathlib import Path
@@ -97,6 +98,10 @@ def _process_single_strategy_with_resampling(
     # Load strategy instance
     registry = StrategyRegistry()
     strategy = registry.get_strategy(strategy_name)
+
+    # Guard against None lookback_hours from registry
+    if lookback_hours is None:
+        lookback_hours = 0
 
     # Determine if resampling needed
     base_tf_min = timeframe_to_minutes(base_timeframe)
@@ -286,9 +291,10 @@ class DataManager:
                 registry = self._load_strategy_registry()
                 for name in strategy_list:
                     if name in registry:
+                        hours = registry[name].get("lookback_hours") or 0
                         max_strategy_hours = max(
                             max_strategy_hours,
-                            registry[name].get("lookback_hours", 0),
+                            hours,
                         )
             except Exception as e:
                 self.logger.warning(
@@ -336,7 +342,7 @@ class DataManager:
         Generate processed data filename (with indicators + strategies).
 
         Returns: "exchange_pair_timeframe_processed.parquet"
-        Example: "binance_BTC_USDT_15m_processed.parquet"
+        Example: "binance_BTC_USDT_15m_processed_test.parquet"
         """
         base = self._get_storage_filename()
         return base.replace(".parquet", "_processed.parquet")
@@ -404,7 +410,7 @@ class DataManager:
         Move existing file to archived/ with timestamp prefix.
 
         Example:
-          data/processed/binance_BTC_USDT_15m_processed.parquet
+          data/processed/binance_BTC_USDT_15m_processed_test.parquet
           → data/archived/processed/20251213_1430_binance_BTC_USDT_15m_processed.parquet
 
         Args:
@@ -842,13 +848,43 @@ class DataManager:
         # Load strategy metadata from JSON
         registry = self._load_strategy_registry()
 
-        # Initialize columns
+        # Pre-validate timeframe compatibility — bypass strategies that need
+        # finer resolution than the base data (e.g. 1m/5m strategies on 15m data)
+        base_tf_min = timeframe_to_minutes(self.base_timeframe)
+        compatible_strategies = []
+        bypassed_count = 0
+        loaded_count = len(strategy_names)
         for strategy_name in strategy_names:
             name_lower = strategy_name.lower()
+            # Initialize columns for ALL strategies (including incompatible)
             df[f'strategy_{name_lower}_flat'] = 0.0
             df[f'strategy_{name_lower}_long'] = 0.0
             df[f'strategy_{name_lower}_short'] = 0.0
             df[f'strategy_{name_lower}_hold'] = 0.0
+
+            strategy_meta = registry.get(strategy_name, {})
+            strat_tf = strategy_meta.get('timeframe', self.base_timeframe)
+            strat_tf_min = timeframe_to_minutes(strat_tf)
+
+            if strat_tf_min < base_tf_min:
+                bypassed_count += 1
+                self.logger.info(
+                    f"Strategy {strategy_name} requires {strat_tf} but base data is "
+                    f"{self.base_timeframe}. Bypassing (signals set to HOLD)."
+                )
+                df[f'strategy_{name_lower}_hold'] = 1.0
+            else:
+                compatible_strategies.append(strategy_name)
+
+        strategy_names = compatible_strategies
+        self.logger.info(
+            f"Loaded {loaded_count} strategies. "
+            f"Bypassing {bypassed_count} strategies due to timeframe mismatches. "
+            f"Executing {len(strategy_names)} valid strategies."
+        )
+        if not strategy_names:
+            self.logger.info("No compatible strategies to execute after timeframe validation")
+            return df
 
         # Determine worker count
         max_workers = config.MAX_STRATEGY_WORKERS
@@ -860,7 +896,8 @@ class DataManager:
         if use_parallel:
             self.logger.debug(f"Using {max_workers} parallel workers")
 
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            executor = ProcessPoolExecutor(max_workers=max_workers)
+            try:
                 # Submit tasks
                 futures = {}
                 for name in strategy_names:
@@ -876,29 +913,45 @@ class DataManager:
                     futures[future] = name
 
                 # Collect results with progress bar
+                print("Processing strategy signals...", file=sys.stderr)
                 pbar = ProgressTracker.process_items(
                     total=len(strategy_names),
-                    desc=f"Executing {len(strategy_names)} strategies in parallel",
+                    desc="Strategies",
                     unit="strategy"
                 )
                 for future in as_completed(futures):
                     name = futures[future]
                     try:
-                        strategy_name, signal_arrays = future.result()
+                        strategy_name, signal_arrays = future.result(
+                            timeout=config.STRATEGY_TIMEOUT_SECONDS
+                        )
                         name_lower = strategy_name.lower()
                         df[f'strategy_{name_lower}_flat'] = signal_arrays['flat']
                         df[f'strategy_{name_lower}_long'] = signal_arrays['long']
                         df[f'strategy_{name_lower}_short'] = signal_arrays['short']
                         df[f'strategy_{name_lower}_hold'] = signal_arrays['hold']
-                        pbar.set_postfix_str(f"{strategy_name}")
+                        display_name = strategy_name[:20] + "..." if len(strategy_name) > 20 else strategy_name
+                        pbar.set_postfix_str(display_name)
+                        pbar.update(1)
+                    except TimeoutError:
+                        self.logger.error(
+                            f"Strategy {name} timed out after {config.STRATEGY_TIMEOUT_SECONDS}s "
+                            f"- signals set to HOLD"
+                        )
+                        name_lower = name.lower()
+                        df[f'strategy_{name_lower}_hold'] = 1.0
                         pbar.update(1)
                     except Exception as e:
                         self.logger.error(f"Strategy {name} failed: {e}")
-                        # Set all HOLD as fallback
                         name_lower = name.lower()
                         df[f'strategy_{name_lower}_hold'] = 1.0
                         pbar.update(1)
                 pbar.close()
+            finally:
+                # Shut down immediately without waiting for hung workers to finish.
+                # cancel_futures cancels pending work; wait=False lets zombie workers
+                # die in the background instead of blocking the main process.
+                executor.shutdown(wait=False, cancel_futures=True)
         else:
             # Sequential execution
             self.logger.info("Using sequential execution (fallback for single strategy)")
@@ -933,8 +986,10 @@ class DataManager:
         if strategy_cols:
             df[strategy_cols] = df[strategy_cols].ffill()
 
-            # Final safety check: replace any remaining NaN with HOLD signal
-            # This should rarely happen, but ensures valid One-Hot encoding
+            # Final safety net: replace any remaining NaN with HOLD signal.
+            # Leading NaN (warmup period) is expected and silently filled.
+            # Only warn if NaN appears in the latter 90% of data (post-warmup).
+            warmup_cutoff = int(len(df) * 0.1)
             for strategy_name in strategy_names:
                 name_lower = strategy_name.lower()
                 cols = [
@@ -943,9 +998,13 @@ class DataManager:
                     f'strategy_{name_lower}_short',
                     f'strategy_{name_lower}_hold'
                 ]
-                # Check if any NaN remains
                 if df[cols].isna().any().any():
-                    self.logger.warning(f"Found NaN in {strategy_name} signals - setting to HOLD")
+                    # Only warn if NaN exists beyond the warmup prefix
+                    post_warmup_nan = df[cols].iloc[warmup_cutoff:].isna().any().any()
+                    if post_warmup_nan:
+                        self.logger.warning(
+                            f"Found NaN in {strategy_name} signals after warmup period - setting to HOLD"
+                        )
                     df[f'strategy_{name_lower}_flat'] = df[f'strategy_{name_lower}_flat'].fillna(0.0)
                     df[f'strategy_{name_lower}_long'] = df[f'strategy_{name_lower}_long'].fillna(0.0)
                     df[f'strategy_{name_lower}_short'] = df[f'strategy_{name_lower}_short'].fillna(0.0)
@@ -998,8 +1057,6 @@ class DataManager:
             self.logger.debug("All strategies already exist and are valid")
             return df
 
-        self.logger.info(f"Executing {len(to_execute)} strategy(s): {', '.join(to_execute)}")
-
         # Execute strategies
         df = self._execute_strategies_parallel(df, to_execute)
 
@@ -1034,8 +1091,9 @@ class DataManager:
 
     def to_arrays(
         self,
-        df: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        df: pd.DataFrame,
+        strategy_list: List[str] = None,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]:
         """
         Convert DataFrame to numpy arrays for RL environment.
 
@@ -1045,7 +1103,7 @@ class DataManager:
             df: Fully processed DataFrame
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array, strategy_names)
         """
         # Check if VIX is enabled in external assets
         vix_enabled = any(
@@ -1053,14 +1111,24 @@ class DataManager:
             for asset in config.EXTERNAL_ASSETS
         )
 
-        price_array, tech_array, turbulence_array, signal_array = self.processor.df_to_array(
+        active_strategy_list = strategy_list if strategy_list is not None else config.STRATEGY_LIST
+
+        price_array, tech_array, turbulence_array, signal_array, strategy_names = self.processor.df_to_array(
             df=df,
-            if_vix=vix_enabled
+            if_vix=vix_enabled,
+            strategy_list=active_strategy_list,
         )
 
         datetime_array = df["date"].to_numpy()
 
-        return price_array, tech_array, turbulence_array, signal_array, datetime_array
+        return (
+            price_array,
+            tech_array,
+            turbulence_array,
+            signal_array,
+            datetime_array,
+            strategy_names,
+        )
 
     # ========================================================================
     # High-Level API (Main Entry Points)
@@ -1215,7 +1283,7 @@ class DataManager:
         end_date: str,
         strategy_list: List[str] = None,
         context: str = ""
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]:
         """
         Complete pipeline: download -> features -> strategies -> arrays
 
@@ -1226,21 +1294,22 @@ class DataManager:
             context: Optional context label (e.g., "Training", "Backtest") for logging
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array, datetime_array, strategy_names)
         """
         df = self.get_processed_data(start_date, end_date, strategy_list)
 
         prefix = f"[{context}] " if context else ""
         self.logger.info(f"{prefix}=== Phase 5: Converting to arrays ===")
-        arrays = self.to_arrays(df)
-        price_array, tech_array, turbulence_array, signal_array, datetime_array = arrays
+        arrays = self.to_arrays(df, strategy_list=strategy_list)
+        price_array, tech_array, turbulence_array, signal_array, datetime_array, strategy_names = arrays
         self.logger.info(
             f"Array shapes:\n"
             f"  Price: {price_array.shape} (OHLCV)\n"
             f"  Tech: {tech_array.shape} (indicators)\n"
             f"  Turbulence: {turbulence_array.shape}\n"
             f"  Signal: {signal_array.shape}\n"
-            f"  Datetime: {datetime_array.shape[0]} timestamps"
+            f"  Datetime: {datetime_array.shape[0]} timestamps\n"
+            f"  Strategy order: {strategy_names}"
         )
 
         return arrays

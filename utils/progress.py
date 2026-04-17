@@ -13,6 +13,16 @@ from typing import Callable, Iterator
 from tqdm import tqdm
 
 
+def format_elapsed(seconds: float) -> str:
+    """Format elapsed time: MM:SS when <1h, HH:MM:SS when >=1h."""
+    seconds = int(seconds)
+    if seconds < 3600:
+        return f"{seconds // 60:02d}:{seconds % 60:02d}"
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
 class ProgressTracker:
     @staticmethod
     def download_chunks(total: int, desc: str = "Downloading") -> tqdm:

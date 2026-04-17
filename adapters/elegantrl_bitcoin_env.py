@@ -16,6 +16,7 @@ class ElegantRLBitcoinEnv:
         turbulence_array=None,
         signal_array=None,
         datetime_array=None,
+        strategy_names=None,
         mode="train",
         env_name="BitcoinTradingEnv",
         num_envs=1,
@@ -23,6 +24,11 @@ class ElegantRLBitcoinEnv:
         state_dim=None,
         action_dim=None,
         if_discrete=False,
+        signal_log_path=None,
+        signal_log_dir=None,
+        signal_log_filename=None,
+        signal_log_flush_every=100,
+        signal_log_worker_id=None,
         **_,
     ):
         """
@@ -41,7 +47,13 @@ class ElegantRLBitcoinEnv:
                 turbulence_array,
                 signal_array,
                 datetime_array,
+                strategy_names=strategy_names,
                 mode=mode,
+                signal_log_path=signal_log_path,
+                signal_log_dir=signal_log_dir,
+                signal_log_filename=signal_log_filename,
+                signal_log_flush_every=signal_log_flush_every,
+                signal_log_worker_id=signal_log_worker_id,
             )
 
         self.env = bitcoin_env
@@ -98,7 +110,8 @@ class ElegantRLBitcoinEnv:
 
     # close (for API completeness)
     def close(self):
-        pass
+        if hasattr(self.env, "close"):
+            self.env.close()
 
 
     # ------------------------------------------------------------------

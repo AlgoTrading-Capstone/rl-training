@@ -109,6 +109,7 @@ def resampled_merge(
     original: DataFrame,
     resampled: DataFrame,
     fill_na: bool = True,
+    target_interval: Union[int, str, None] = None,
 ) -> DataFrame:
     """
     Merge a resampled OHLCV dataset back into the original base timeframe dataset.
@@ -123,6 +124,8 @@ def resampled_merge(
         resampled: Resampled dataframe (slower timeframe, e.g. 3h),
                    must contain a 'date' column.
         fill_na: If True, forward-fill missing values after the merge.
+        target_interval: Optional target interval (int minutes or str like "1d").
+                        Used as fallback when resampled has < 2 rows.
 
     Returns:
         A merged dataframe where all columns from `resampled` are joined onto `original`.
@@ -133,6 +136,28 @@ def resampled_merge(
         raise ValueError("Both original and resampled dataframes must contain a 'date' column.")
 
     original_int = compute_interval_minutes(original)
+
+    # Defensive guard: if the resampled DataFrame has fewer than 2 rows,
+    # we cannot infer its interval.  Return the original with NaN-filled
+    # placeholder columns so downstream code sees the expected schema.
+    if len(resampled) < 2:
+        if target_interval is not None:
+            if isinstance(target_interval, str):
+                fallback_int = timeframe_to_minutes(target_interval)
+            else:
+                fallback_int = int(target_interval)
+        else:
+            # Best-effort guess when no target_interval provided
+            fallback_int = original_int * 2
+
+        original = original.copy()
+        for col in resampled.columns:
+            if col != "date":
+                original[f"resample_{fallback_int}_{col}"] = float("nan")
+        if fill_na:
+            original = original.ffill()
+        return original
+
     resampled_int = compute_interval_minutes(resampled)
 
     if original_int >= resampled_int:

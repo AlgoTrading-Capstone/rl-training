@@ -18,6 +18,24 @@ from data.external_manager import ExternalDataManager
 from utils.logger import RLLogger, LogComponent
 from utils.date_display import format_date_range_for_display
 
+
+def _strategy_signal_columns(strategy_list: list[str]) -> tuple[list[str], list[str]]:
+    """Build strategy signal columns in canonical block order."""
+    strategy_cols: list[str] = []
+    resolved_names: list[str] = []
+
+    for strategy_name in strategy_list:
+        name_lower = strategy_name.lower()
+        strategy_cols.extend([
+            f"strategy_{name_lower}_flat",
+            f"strategy_{name_lower}_long",
+            f"strategy_{name_lower}_short",
+            f"strategy_{name_lower}_hold",
+        ])
+        resolved_names.append(strategy_name)
+
+    return strategy_cols, resolved_names
+
 class CcxtProcessor:
     """
     Processor for downloading and processing Bitcoin market data via CCXT
@@ -391,8 +409,9 @@ class CcxtProcessor:
             self,
             df: pd.DataFrame,
             tech_indicator_list: list[str],
-            if_vix: bool
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+            if_vix: bool,
+            strategy_list: list[str] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[str]]:
         """
         Convert DataFrame to numpy arrays for RL environment
 
@@ -402,7 +421,7 @@ class CcxtProcessor:
             if_vix: Whether to include VIX in the output
 
         Returns:
-            Tuple of (price_array, tech_array, turbulence_array, signal_array)
+            Tuple of (price_array, tech_array, turbulence_array, signal_array, strategy_names)
 
         Notes:
             Datetime information is NOT returned here.
@@ -443,15 +462,29 @@ class CcxtProcessor:
         else:
             turbulence_array = np.zeros((len(df), 0), dtype=np.float32)
 
-        # Strategy signal array (One-Hot encoded)
-        # Columns follow pattern: strategy_{name}_flat, strategy_{name}_long, etc.
-        strategy_cols = sorted([col for col in df.columns if col.startswith('strategy_')])
+        requested_strategies = strategy_list if strategy_list is not None else config.STRATEGY_LIST
+        strategy_cols: list[str] = []
+        strategy_names: list[str] = []
 
-        if strategy_cols and config.ENABLE_STRATEGIES:
+        if config.ENABLE_STRATEGIES and requested_strategies:
+            strategy_cols, strategy_names = _strategy_signal_columns(requested_strategies)
+            missing_cols = [col for col in strategy_cols if col not in df.columns]
+            if missing_cols:
+                # The variance filter in DataManager may have removed dead strategies
+                # from the DataFrame before it reaches here. Silently restrict to
+                # only the strategies whose full set of 4 one-hot columns is present.
+                strategy_names = [
+                    name for name in strategy_names
+                    if all(
+                        f"strategy_{name.lower()}_{s}" in df.columns
+                        for s in ("flat", "long", "short", "hold")
+                    )
+                ]
+                strategy_cols = [c for c in strategy_cols if c in df.columns]
+
+        if strategy_cols:
             signal_array = df[strategy_cols].values  # Shape: (T, S*4)
-            # Already binary (0 or 1), no need for nan_to_num
         else:
-            # No strategies enabled - return empty array
             signal_array = np.zeros((len(df), 0), dtype=np.float32)
 
         # Defensive check: turbulence_array should NEVER have NaNs at this point
@@ -466,7 +499,7 @@ class CcxtProcessor:
 
         # Shapes printed in data_manager.py (removed duplicate)
 
-        return price_array, tech_array, turbulence_array, signal_array
+        return price_array, tech_array, turbulence_array, signal_array, strategy_names
 
 
 class DataProcessor:
@@ -562,10 +595,16 @@ class DataProcessor:
     def df_to_array(
             self,
             df: pd.DataFrame,
-            if_vix: bool
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+            if_vix: bool,
+            strategy_list: list[str] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[str]]:
         """Convert DataFrame to arrays"""
-        return self.processor.df_to_array(df, self.tech_indicator_list, if_vix)
+        return self.processor.df_to_array(
+            df,
+            self.tech_indicator_list,
+            if_vix,
+            strategy_list=strategy_list,
+        )
 
     def _convert_to_iso_date(self, date_str: str) -> str:
         """Convert date string to ISO format (delegates to CcxtProcessor)"""

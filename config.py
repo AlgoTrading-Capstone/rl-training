@@ -157,7 +157,7 @@ ENABLE_TURBULENCE = True
 # -----------------------------------------------------------
 EXTERNAL_ASSETS = [
     {
-        "enabled": True,
+        "enabled": False,
         "ticker": "^VIX",
         "col_name": "vix",
 
@@ -220,37 +220,24 @@ ENABLE_STRATEGIES = True
 # List of strategies to include (names must match class names in strategies/registry.py)
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
+# Only the 4 strategies that passed the 5% signal-activity variance filter.
+# Dead strategies are archived in archive_strategies/ — see strategy_post_mortem_analysis.md
+# State space impact: 4 strategies × 4 one-hot signals = 16 strategy features
 STRATEGY_LIST = [
-    "SupertrendStrategy",                             # Supertrend Legacy (pre-converter baseline)
-    "EvasiveSuperTrendStrategySourceSelectStrategy",  # Evasive SuperTrend with noise-avoidance (1h)
-    "KamaTrendStrategy",                              # Dual KAMA crossover trend filter (1h)
-    "NewTottStrategy",                                # OTT with VAR MA Twin bands (15m)
-    "TrendmasterPro23WithAlertsStrategy",
-    "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
-    "ThreeCommasBotStrategy",
-    "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
-    "AleksDuZeroLagProSafeModeStrategy",
-    "SovereignExecutionJoatStrategy",
-    "GoldMtfStrategy",
-    "QuantPullbackDayTradeStrategy",
-    "Sensex500PointInstitutionalBreakoutStrategy",
-    "MonthlyReturnsInPinescriptStrategiesStrategy",
-    "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
-    "TrendPullbackMomentumSideAwareStrategy",
-    "SmcFractalStrategyJamolV3",
-    "Tasc202603OnePercentAWeekStrategy",
-    "EmaPullbackAdxCvdDivergenceStrategy",
-    "KineticInertiaShort1hStrategy",
-    "XauusdM5HybridEma915PartialTpRunnerStrategy",
-    "PgQsdForNiftyFutureStrategy",
-    "CdvEmaCrossStrategyV6",
-    "MtfEmaEngulfRetestNq1MStrategy",
+    "SupertrendStrategy",                          # 44.77% active — triple Supertrend agreement
+    "PgQsdForNiftyFutureStrategy",                 # 29.31% active — WSI composite score + HMA
+    "MonthlyReturnsInPinescriptStrategiesStrategy", # 18.19% active — pivot high/low breakout
+    "TrendPullbackMomentumSideAwareStrategy",      # 13.87% active — HTF EMA + ATR zone + RSI
 ]
 
 # Maximum number of parallel workers for strategy signal processing
 # None = use half of available CPU cores
 # Set to 1 to disable parallel processing (sequential mode)
 MAX_STRATEGY_WORKERS = None
+
+# Maximum seconds a single strategy is allowed to run before being timed out.
+# Strategies exceeding this limit will have their signals set to HOLD.
+STRATEGY_TIMEOUT_SECONDS = 600  # 10 minutes
 
 # ============================================================
 # Feature Store Configuration

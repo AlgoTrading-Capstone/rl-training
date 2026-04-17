@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Sequence
 
 import config
 from utils.normalization import inverse_normalize_state
@@ -18,13 +18,14 @@ class StepLogger:
     - Translate agent actions to business terms (exposure %, stop-loss %).
     """
 
-    def __init__(self, out_dir: str | Path):
+    def __init__(self, out_dir: str | Path, strategy_names: Sequence[str] | None = None):
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
         self.file_path = self.out_dir / "steps.csv"
         self._file = None
         self._writer = None
+        self.strategy_names = list(strategy_names) if strategy_names is not None else list(config.STRATEGY_LIST)
 
     def open(self) -> None:
         self._file = self.file_path.open("w", newline="", encoding="utf-8")
@@ -78,7 +79,7 @@ class StepLogger:
 
         # ----------------------------------------------------
         # Decode strategy decisions (4 binary -> single decision)
-        # Each strategy occupies 4 columns: LONG, SHORT, FLAT, HOLD
+        # Each strategy occupies 4 columns: FLAT, LONG, SHORT, HOLD
         # ----------------------------------------------------
         strategy_decisions = self._decode_strategy_decisions(sig_vec)
 
@@ -144,24 +145,23 @@ class StepLogger:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    @staticmethod
-    def _decode_strategy_decisions(sig_vec) -> Dict[str, str]:
+    def _decode_strategy_decisions(self, sig_vec) -> Dict[str, str]:
         # If strategies are disabled (or no signals), nothing to decode
         if not bool(getattr(config, "ENABLE_STRATEGIES", False)) or sig_vec is None or len(sig_vec) == 0:
             return {}
 
-        expected = 4 * len(config.STRATEGY_LIST)
+        expected = 4 * len(self.strategy_names)
         if len(sig_vec) != expected:
             # Fail loudly - signal vector layout must match strategy list exactly
             raise ValueError(
                 f"signal_vec length mismatch: got {len(sig_vec)}, expected {expected} "
-                f"(4 per strategy * {len(config.STRATEGY_LIST)} strategies)."
+                f"(4 per strategy * {len(self.strategy_names)} strategies)."
             )
 
         decisions: Dict[str, str] = {}
         idx = 0
 
-        for strategy_name in config.STRATEGY_LIST:
+        for strategy_name in self.strategy_names:
             s = sig_vec[idx: idx + 4]
             idx += 4
 

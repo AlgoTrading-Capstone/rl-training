@@ -6,103 +6,12 @@
     "timeframe": "1h",
     "lookback_hours": 124
   },
-  "KamaTrendStrategy": {
+  "PgQsdForNiftyFutureStrategy": {
     "enabled": true,
-    "module": "strategies.kama_trend_strategy",
-    "class_name": "KamaTrendStrategy",
-    "timeframe": "1h",
-    "lookback_hours": 100
-  },
-  "NewTottStrategy": {
-    "enabled": true,
-    "module": "strategies.new_tott_strategy",
-    "class_name": "NewTottStrategy",
+    "module": "strategies.pg_qsd_for_nifty_future_strategy",
+    "class_name": "PgQsdForNiftyFutureStrategy",
     "timeframe": "15m",
-    "lookback_hours": 13
-  },
-  "RudyBreakoutMomentumV2Strategy": {
-    "enabled": true,
-    "module": "strategies.rudy_breakout_momentum_v2_strategy",
-    "class_name": "RudyBreakoutMomentumV2Strategy",
-    "timeframe": "1d",
-    "lookback_hours": 3024
-  },
-  "BjorgumDoubleTapStrategy": {
-    "enabled": true,
-    "module": "strategies.bjorgum_double_tap_strategy",
-    "class_name": "BjorgumDoubleTapStrategy",
-    "timeframe": "4h",
-    "lookback_hours": 1200
-  },
-  "EvasiveSuperTrendStrategySourceSelectStrategy": {
-    "enabled": true,
-    "module": "strategies.evasive_super_trend_strategy_source_select_strategy",
-    "class_name": "EvasiveSuperTrendStrategySourceSelectStrategy",
-    "timeframe": "1h",
-    "lookback_hours": 50
-  },
-  "TrendmasterPro23WithAlertsStrategy": {
-    "enabled": true,
-    "module": "strategies.trendmaster_pro_2_3_with_alerts_strategy",
-    "class_name": "TrendmasterPro23WithAlertsStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 50
-  },
-  "AllDayFuturesScalperEmaTrendCrossAtrBrackets": {
-    "enabled": true,
-    "module": "strategies.all_day_futures_scalper_ema_trend_cross_atr_brackets_strategy",
-    "class_name": "AllDayFuturesScalperEmaTrendCrossAtrBrackets",
-    "timeframe": "15m",
-    "lookback_hours": 50
-  },
-  "ThreeCommasBotStrategy": {
-    "enabled": true,
-    "module": "strategies.threecommas_bot_strategy",
-    "class_name": "ThreeCommasBotStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 13
-  },
-  "Ny15mOrbWithAFixedSlTpNasdaqStrategy": {
-    "enabled": true,
-    "module": "strategies.ny15m_orb_with_a_fixed_sl_tp_nasdaq_strategy",
-    "class_name": "Ny15mOrbWithAFixedSlTpNasdaqStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 13
-  },
-  "AleksDuZeroLagProSafeModeStrategy": {
-    "enabled": true,
-    "module": "strategies.aleks_du_zero_lag_pro_safe_mode_strategy",
-    "class_name": "AleksDuZeroLagProSafeModeStrategy",
-    "timeframe": "4h",
-    "lookback_hours": 152
-  },
-  "SovereignExecutionJoatStrategy": {
-    "enabled": true,
-    "module": "strategies.sovereign_execution_joat_strategy",
-    "class_name": "SovereignExecutionJoatStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 500
-  },
-  "GoldMtfStrategy": {
-    "enabled": true,
-    "module": "strategies.gold_mtf_strategy",
-    "class_name": "GoldMtfStrategy",
-    "timeframe": "1m",
-    "lookback_hours": 6
-  },
-  "QuantPullbackDayTradeStrategy": {
-    "enabled": true,
-    "module": "strategies.quant_pullback_day_trade_strategy",
-    "class_name": "QuantPullbackDayTradeStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 15
-  },
-  "Sensex500PointInstitutionalBreakoutStrategy": {
-    "enabled": true,
-    "module": "strategies.sensex_500_point_institutional_breakout_strategy",
-    "class_name": "Sensex500PointInstitutionalBreakoutStrategy",
-    "timeframe": "5m",
-    "lookback_hours": 8
+    "lookback_hours": 16
   },
   "MonthlyReturnsInPinescriptStrategiesStrategy": {
     "enabled": true,
@@ -111,74 +20,11 @@
     "timeframe": "15m",
     "lookback_hours": 13
   },
-  "GreerLeapSelfOptimizingXgboostApproxStatsStrategy": {
-    "enabled": true,
-    "module": "strategies.greer_leap_self_optimizing_xgboost_approx_stats_strategy",
-    "class_name": "GreerLeapSelfOptimizingXgboostApproxStatsStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 25
-  },
   "TrendPullbackMomentumSideAwareStrategy": {
     "enabled": true,
     "module": "strategies.trend_pullback_momentum_side_aware_strategy",
     "class_name": "TrendPullbackMomentumSideAwareStrategy",
     "timeframe": "15m",
     "lookback_hours": 400
-  },
-  "SmcFractalStrategyJamolV3": {
-    "enabled": true,
-    "module": "strategies.smc_fractal_strategy_jamol_v3_strategy",
-    "class_name": "SmcFractalStrategyJamolV3",
-    "timeframe": "15m",
-    "lookback_hours": 125
-  },
-  "Tasc202603OnePercentAWeekStrategy": {
-    "enabled": true,
-    "module": "strategies.tasc_2026_03_one_percent_a_week_strategy",
-    "class_name": "Tasc202603OnePercentAWeekStrategy",
-    "timeframe": "1d",
-    "lookback_hours": null
-  },
-  "EmaPullbackAdxCvdDivergenceStrategy": {
-    "enabled": true,
-    "module": "strategies.ema_pullback_adx_cvd_divergence_strategy",
-    "class_name": "EmaPullbackAdxCvdDivergenceStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 24
-  },
-  "KineticInertiaShort1hStrategy": {
-    "enabled": true,
-    "module": "strategies.kinetic_inertia_short_1h_strategy",
-    "class_name": "KineticInertiaShort1hStrategy",
-    "timeframe": "1h",
-    "lookback_hours": 21
-  },
-  "XauusdM5HybridEma915PartialTpRunnerStrategy": {
-    "enabled": true,
-    "module": "strategies.xauusd_m5_hybrid_ema_9_15_partial_tp_runner_strategy",
-    "class_name": "XauusdM5HybridEma915PartialTpRunnerStrategy",
-    "timeframe": "5m",
-    "lookback_hours": 4
-  },
-  "PgQsdForNiftyFutureStrategy": {
-    "enabled": true,
-    "module": "strategies.pg_qsd_for_nifty_future_strategy",
-    "class_name": "PgQsdForNiftyFutureStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 16
-  },
-  "CdvEmaCrossStrategyV6": {
-    "enabled": true,
-    "module": "strategies.cdv_ema_cross_strategy_v6_strategy",
-    "class_name": "CdvEmaCrossStrategyV6",
-    "timeframe": "1h",
-    "lookback_hours": 168
-  },
-  "MtfEmaEngulfRetestNq1MStrategy": {
-    "enabled": true,
-    "module": "strategies.mtf_ema_engulf_retest_nq_1m_strategy",
-    "class_name": "MtfEmaEngulfRetestNq1MStrategy",
-    "timeframe": "1m",
-    "lookback_hours": 10
   }
 }

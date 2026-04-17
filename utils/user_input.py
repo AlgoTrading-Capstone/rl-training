@@ -419,6 +419,42 @@ def collect_train_only_input() -> Tuple[Dict[str, Any], Path]:
     return metadata, run_path
 
 
+def collect_gpu_preference() -> bool:
+    """
+    Ask user whether to use GPU for training.
+    Validates CUDA availability and warns if unavailable.
+
+    Returns:
+        True if GPU should be used, False for CPU-only.
+    """
+    styled_header("GPU CONFIGURATION")
+
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+        if cuda_available:
+            device_name = torch.cuda.get_device_name(0)
+            styled_info(f"CUDA available: {device_name}")
+        else:
+            styled_warning("CUDA is NOT available on this machine.")
+    except ImportError:
+        cuda_available = False
+        styled_warning("PyTorch not found. GPU unavailable.")
+
+    while True:
+        choice = styled_prompt("Use GPU for training? (y/n):")
+        if choice.lower() in ("y", "yes"):
+            if not cuda_available:
+                styled_warning("GPU requested but CUDA is not available. Falling back to CPU.")
+                return False
+            styled_success("GPU training enabled.")
+            return True
+        if choice.lower() in ("n", "no"):
+            styled_info("CPU training selected.")
+            return False
+        styled_error("Please enter y or n.")
+
+
 def collect_backtest_only_input() -> Tuple[Dict[str, Any], Path]:
     """Collect metadata for backtesting an existing trained model."""
     run_path, model_metadata = select_existing_model_run()

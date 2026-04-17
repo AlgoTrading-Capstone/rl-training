@@ -123,7 +123,7 @@ def train_agent_single_process(args: Config):
 
         th.set_grad_enabled(True)
         logging_tuple = agent.update_net(buffer)
-        logging_tuple = (*logging_tuple, agent.explore_rate, show_str)
+        logging_tuple = (*logging_tuple, getattr(agent, 'explore_rate', 0.0), show_str)
         th.set_grad_enabled(False)
 
         evaluator.evaluate_and_save(actor=agent.act, steps=horizon_len, exp_r=exp_r, logging_tuple=logging_tuple)
