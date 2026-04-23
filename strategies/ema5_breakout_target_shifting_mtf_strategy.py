@@ -51,12 +51,12 @@ import numpy as np
 import pandas as pd
 
 from strategies.base_strategy import BaseStrategy, SignalType
-from strategies.utils.resampling import (
+from utils.resampling import (
     compute_interval_minutes,
     resample_to_interval,
     resampled_merge,
 )
-from src.utils.timeframes import timeframe_to_minutes
+from utils.timeframes import timeframe_to_minutes
 
 
 # Map Pine's "EMA Timeframe" dropdown to lowercase timeframes understood by
