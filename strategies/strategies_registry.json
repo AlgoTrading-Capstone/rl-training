@@ -26,5 +26,12 @@
     "class_name": "TrendPullbackMomentumSideAwareStrategy",
     "timeframe": "15m",
     "lookback_hours": 400
+  },
+  "Ema5BreakoutTargetShiftingMtfStrategy": {
+    "enabled": true,
+    "module": "strategies.ema5_breakout_target_shifting_mtf_strategy",
+    "class_name": "Ema5BreakoutTargetShiftingMtfStrategy",
+    "timeframe": null,
+    "lookback_hours": 1
   }
 }

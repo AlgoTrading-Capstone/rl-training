@@ -228,6 +228,7 @@ STRATEGY_LIST = [
     "PgQsdForNiftyFutureStrategy",                 # 29.31% active — WSI composite score + HMA
     "MonthlyReturnsInPinescriptStrategiesStrategy", # 18.19% active — pivot high/low breakout
     "TrendPullbackMomentumSideAwareStrategy",      # 13.87% active — HTF EMA + ATR zone + RSI
+    "Ema5BreakoutTargetShiftingMtfStrategy",
 ]
 
 # Maximum number of parallel workers for strategy signal processing
