@@ -1,32 +1,4 @@
 {
-  "SupertrendStrategy": {
-    "enabled": true,
-    "module": "strategies.supertrend_legacy_strategy",
-    "class_name": "SupertrendStrategy",
-    "timeframe": "1h",
-    "lookback_hours": 124
-  },
-  "PgQsdForNiftyFutureStrategy": {
-    "enabled": true,
-    "module": "strategies.pg_qsd_for_nifty_future_strategy",
-    "class_name": "PgQsdForNiftyFutureStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 16
-  },
-  "MonthlyReturnsInPinescriptStrategiesStrategy": {
-    "enabled": true,
-    "module": "strategies.monthly_returns_in_pinescript_strategies_strategy",
-    "class_name": "MonthlyReturnsInPinescriptStrategiesStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 13
-  },
-  "TrendPullbackMomentumSideAwareStrategy": {
-    "enabled": true,
-    "module": "strategies.trend_pullback_momentum_side_aware_strategy",
-    "class_name": "TrendPullbackMomentumSideAwareStrategy",
-    "timeframe": "15m",
-    "lookback_hours": 400
-  },
   "Ema5BreakoutTargetShiftingMtfStrategy": {
     "enabled": true,
     "module": "strategies.ema5_breakout_target_shifting_mtf_strategy",

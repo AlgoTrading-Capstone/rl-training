@@ -6,12 +6,12 @@ Designed for teammates to quickly access cached data without rerunning the pipel
 
 Usage (CLI):
     python -m data.load_features
-    python -m data.load_features --strategies SupertrendStrategy,KamaTrendStrategy
+    python -m data.load_features --strategies Ema5BreakoutTargetShiftingMtfStrategy
     python -m data.load_features --info
 
 Usage (import):
     from data.load_features import load_feature_store
-    df = load_feature_store(strategies=["SupertrendStrategy", "KamaTrendStrategy"])
+    df = load_feature_store(strategies=["Ema5BreakoutTargetShiftingMtfStrategy"])
 """
 
 import argparse

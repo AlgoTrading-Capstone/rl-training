@@ -220,14 +220,7 @@ ENABLE_STRATEGIES = True
 # List of strategies to include (names must match class names in strategies/registry.py)
 # Each enabled strategy adds 4 dimensions to signal_ary (One-Hot: [FLAT, LONG, SHORT, HOLD])
 # Empty list = no strategies (signal_ary will be empty)
-# Only the 4 strategies that passed the 5% signal-activity variance filter.
-# Dead strategies are archived in archive_strategies/ — see strategy_post_mortem_analysis.md
-# State space impact: 4 strategies × 4 one-hot signals = 16 strategy features
 STRATEGY_LIST = [
-    "SupertrendStrategy",                          # 44.77% active — triple Supertrend agreement
-    "PgQsdForNiftyFutureStrategy",                 # 29.31% active — WSI composite score + HMA
-    "MonthlyReturnsInPinescriptStrategiesStrategy", # 18.19% active — pivot high/low breakout
-    "TrendPullbackMomentumSideAwareStrategy",      # 13.87% active — HTF EMA + ATR zone + RSI
     "Ema5BreakoutTargetShiftingMtfStrategy",
 ]
 

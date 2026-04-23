@@ -7,10 +7,6 @@ This allows configuration-driven strategy selection without code changes.
 
 from typing import Dict, Type, List
 from strategies.base_strategy import BaseStrategy
-from strategies.supertrend_legacy_strategy import SupertrendStrategy
-from strategies.pg_qsd_for_nifty_future_strategy import PgQsdForNiftyFutureStrategy
-from strategies.monthly_returns_in_pinescript_strategies_strategy import MonthlyReturnsInPinescriptStrategiesStrategy
-from strategies.trend_pullback_momentum_side_aware_strategy import TrendPullbackMomentumSideAwareStrategy
 from strategies.ema5_breakout_target_shifting_mtf_strategy import Ema5BreakoutTargetShiftingMtfStrategy
 
 
@@ -20,15 +16,8 @@ class StrategyRegistry:
     Handles dynamic loading and instantiation of strategy classes by name.
     """
 
-    # Map strategy names to classes
-    # Only the 4 strategies that passed the 5% signal-activity variance filter.
-    # Dead strategies archived in archive_strategies/ — see strategy_post_mortem_analysis.md
     _STRATEGIES: Dict[str, Type[BaseStrategy]] = {
-        "SupertrendStrategy": SupertrendStrategy,
-        "PgQsdForNiftyFutureStrategy": PgQsdForNiftyFutureStrategy,
-        "MonthlyReturnsInPinescriptStrategiesStrategy": MonthlyReturnsInPinescriptStrategiesStrategy,
-        "TrendPullbackMomentumSideAwareStrategy": TrendPullbackMomentumSideAwareStrategy,
-            "Ema5BreakoutTargetShiftingMtfStrategy": Ema5BreakoutTargetShiftingMtfStrategy,
+        "Ema5BreakoutTargetShiftingMtfStrategy": Ema5BreakoutTargetShiftingMtfStrategy,
     }
 
     @classmethod
