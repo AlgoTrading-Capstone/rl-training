@@ -52,3 +52,6 @@ python-dateutil>=2.8.2    # Date parsing helpers
 
 # --- Testing ---
 pytest>=7.0.0
+
+#TensorBoard is optional, but if you want to use it for logging:
+tensorboard>=2.0.0

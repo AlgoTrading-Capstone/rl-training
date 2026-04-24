@@ -91,6 +91,19 @@ class Evaluator:
             self.tensorboard.add_scalar("reward/std_reward_time", std_r, train_time)
             self.tensorboard.add_scalar("reward/exp_reward_time", exp_r, train_time)
 
+            # PPO health metrics. Positions 2-10 in value_tuple follow the fixed order
+            # documented in AgentPPO.update_net return. AgentA2C pads unused slots with 0.0.
+            if len(value_tuple) >= 11:
+                self.tensorboard.add_scalar("info/entropy", value_tuple[2], self.total_step)
+                self.tensorboard.add_scalar("info/approx_kl", value_tuple[3], self.total_step)
+                self.tensorboard.add_scalar("info/clip_fraction", value_tuple[4], self.total_step)
+                self.tensorboard.add_scalar("info/log_std_mean", value_tuple[5], self.total_step)
+                self.tensorboard.add_scalar("info/adv_mean", value_tuple[6], self.total_step)
+                self.tensorboard.add_scalar("info/adv_std", value_tuple[7], self.total_step)
+                self.tensorboard.add_scalar("info/explained_variance", value_tuple[8], self.total_step)
+                self.tensorboard.add_scalar("info/kl_break_iter", value_tuple[9], self.total_step)
+                self.tensorboard.add_scalar("info/lambda_entropy", value_tuple[10], self.total_step)
+
         '''print some information to Terminal'''
         prev_max_r = self.max_r
         self.max_r = max(self.max_r, avg_r)  # update max average cumulative rewards

@@ -52,6 +52,7 @@ class StateDebugLogger:
         action_a_pos: float,
         action_a_sl: float,
         reward: float,
+        reward_components: dict | None = None,
     ) -> None:
         """
         Log a single debug step.
@@ -91,6 +92,9 @@ class StateDebugLogger:
         # ----------------------------------------------------
         row["action_a_pos"] = float(action_a_pos)
         row["action_a_sl"] = float(action_a_sl)
+        if reward_components:
+            for k, v in reward_components.items():
+                row[f"reward_{k}"] = float(v)
         row["reward"] = float(reward)
 
         # ----------------------------------------------------

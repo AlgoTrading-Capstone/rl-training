@@ -25,7 +25,9 @@ PPO_CONFIG = {
     "repeat_times": 8,         # Gradient passes over the same rollout batch
     "ratio_clip": 0.2,         # PPO clip threshold (stability)
     "lambda_gae_adv": 0.95,    # GAE lambda (bias/variance tradeoff)
-    "lambda_entropy": 0.01,    # Exploration encouragement
+    "lambda_entropy": 0.01,    # Exploration encouragement (start value)
+    "lambda_entropy_end": 0.001,  # End value — linearly decayed over break_step
+    "target_kl": 0.015,        # KL early-stop: break inner loop if approx_kl > 1.5 * target_kl
     "if_use_vtrace": True,     # Use V-trace off-policy correction
     "reward_scale": 2 ** 7,    # Scale log-return rewards (~1e-4) to critic-friendly magnitude
 }
@@ -155,9 +157,14 @@ def build_elegantrl_config(
     # Evaluation
     erl_config.eval_env_class = ElegantRLBitcoinEnv
     erl_config.eval_env_args = eval_env_args
-    erl_config.eval_per_step = int(2e4)
+    # Eval / checkpoint cadence: 5K-step eval window × save_gap=5 = periodic checkpoint
+    # every 25K training steps, so early collapses (observed ~25K in novix_nostrat runs)
+    # are captured before being overwritten by the next best-val save.
+    erl_config.eval_per_step = int(5e3)
+    erl_config.save_gap = 5
     erl_config.eval_times = 8
-
+    # Enable TensorBoard logging for reward curves, losses, and custom scalars (e.g. strategy signals)
+    erl_config.if_use_tb = True
     # Enrich metadata with training + env interface (contract)
     enrich_metadata_with_training_config(
         run_path=run_path,

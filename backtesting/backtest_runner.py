@@ -336,6 +336,7 @@ def run_backtest(
                 action_a_pos=float(a_pos),
                 action_a_sl=float(a_sl),
                 reward=float(reward),
+                reward_components=info.get("reward_components") if isinstance(info, dict) else None,
             )
 
             # ----------------------------------------------------

@@ -13,6 +13,7 @@ Validates:
 9. Bankruptcy returns -1.0
 10. Existing reward functions still work with context kwarg
 11. No-context fallback to plain log return
+12. Reward functions return (scalar, components_dict) tuple with stable keys
 """
 import sys
 import os
@@ -20,10 +21,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 from reward_functions import (
-    reward_log_return,
-    reward_asymmetric_drawdown_penalty,
-    reward_stop_aware_drawdown,
+    reward_log_return as _reward_log_return,
+    reward_asymmetric_drawdown_penalty as _reward_asymmetric_drawdown_penalty,
+    reward_stop_aware_drawdown as _reward_stop_aware_drawdown,
 )
+
+
+# Scalar-only wrappers so the existing assertions keep their shape.
+# The decomposition itself is tested separately in `test_reward_components_shape`.
+def reward_log_return(*args, **kwargs):
+    return _reward_log_return(*args, **kwargs)[0]
+
+
+def reward_asymmetric_drawdown_penalty(*args, **kwargs):
+    return _reward_asymmetric_drawdown_penalty(*args, **kwargs)[0]
+
+
+def reward_stop_aware_drawdown(*args, **kwargs):
+    return _reward_stop_aware_drawdown(*args, **kwargs)[0]
 
 
 def _ctx(stop_triggered=False, recent_stop_count=0,
@@ -212,6 +227,51 @@ def test_combined_penalties_stack():
     print("PASS: penalties stack correctly")
 
 
+# ------------------------------------------------------------------ #
+# 13. Decomposition contract: all three fns return (scalar, dict) with
+#     stable keys. Checked here so CSV headers downstream don't shift.
+# ------------------------------------------------------------------ #
+def test_reward_components_shape():
+    old_eq, new_eq = 100_000.0, 100_100.0
+
+    r1, c1 = _reward_log_return(old_eq, new_eq)
+    assert isinstance(r1, float)
+    assert set(c1.keys()) == {"base_log_return", "bankruptcy"}
+
+    r2, c2 = _reward_asymmetric_drawdown_penalty(old_eq, new_eq)
+    assert isinstance(r2, float)
+    assert set(c2.keys()) == {"base_log_return", "downside_extra_penalty", "bankruptcy"}
+
+    r3, c3 = _reward_stop_aware_drawdown(old_eq, new_eq, context=_ctx(
+        stop_triggered=True, recent_stop_count=2,
+        same_side_reentry=True, current_drawdown=0.15))
+    assert isinstance(r3, float)
+    assert set(c3.keys()) == {
+        "base_log_return", "stop_penalty", "reentry_penalty",
+        "drawdown_penalty", "bankruptcy",
+    }
+    assert c3["stop_penalty"] > 0
+    assert c3["reentry_penalty"] > 0
+    assert c3["drawdown_penalty"] > 0
+
+    # Bankruptcy branches must still return a tuple with all keys present.
+    r_b, c_b = _reward_stop_aware_drawdown(100_000, 0, context=_ctx())
+    assert r_b == -1.0
+    assert set(c_b.keys()) == {
+        "base_log_return", "stop_penalty", "reentry_penalty",
+        "drawdown_penalty", "bankruptcy",
+    }
+    assert c_b["bankruptcy"] == 1.0
+
+    # No-context fallback for stop_aware still returns full key set.
+    r_nc, c_nc = _reward_stop_aware_drawdown(old_eq, new_eq)
+    assert set(c_nc.keys()) == {
+        "base_log_return", "stop_penalty", "reentry_penalty",
+        "drawdown_penalty", "bankruptcy",
+    }
+    print("PASS: reward functions return (scalar, components) with stable keys")
+
+
 if __name__ == "__main__":
     test_base_return_no_penalties()
     test_stop_triggered_single()
@@ -225,4 +285,5 @@ if __name__ == "__main__":
     test_existing_functions_accept_context()
     test_no_context_fallback()
     test_combined_penalties_stack()
+    test_reward_components_shape()
     print("\n=== ALL reward_stop_aware_drawdown TESTS PASSED ===")

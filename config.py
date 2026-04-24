@@ -44,7 +44,7 @@ NET_DIMS = [256, 256]
 # ------
 # PPO usually requires more total steps than off-policy methods (e.g. SAC)
 # Increasing TOTAL_TRAINING_STEPS increases training time linearly
-TOTAL_TRAINING_STEPS = int(5e5)
+TOTAL_TRAINING_STEPS = 500_000
 
 # Initial cash balance in USD at the beginning of each training/test episode (one full simulation run over a selected historical time window).
 INITIAL_BALANCE = 100_000

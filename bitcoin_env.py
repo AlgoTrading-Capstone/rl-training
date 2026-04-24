@@ -476,7 +476,7 @@ class BitcoinTradingEnv:
             "current_drawdown": current_drawdown,
         }
 
-        reward = self.reward_fn(old_equity, new_equity, context=reward_context)
+        reward, reward_components = self.reward_fn(old_equity, new_equity, context=reward_context)
 
         # -------------------------------
         # Update equity for next step
@@ -588,6 +588,7 @@ class BitcoinTradingEnv:
             "stop_updated": result.stop_updated,
             "equity": new_equity,                 # Portfolio total value (cash + holdings * equity_price) AFTER this step
             "equity_price": float(equity_price),  # Price used to value holdings this step (close if no stop, else stop execution price)
+            "reward_components": reward_components,
         }
 
         return next_state, reward, done, info

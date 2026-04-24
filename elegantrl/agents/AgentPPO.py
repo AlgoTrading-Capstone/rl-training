@@ -8,6 +8,12 @@ from ..train import Config
 
 TEN = th.Tensor
 
+# Clamp bounds on the trainable log-std parameter to prevent policy collapse
+# to a near-zero std (mode collapse) or blow-up. Applied in-place after each
+# actor optimizer step inside update_objectives.
+LOG_STD_MIN = -2.0
+LOG_STD_MAX = 1.0
+
 
 class AgentPPO(AgentBase):
     """PPO algorithm + GAE
@@ -26,8 +32,23 @@ class AgentPPO(AgentBase):
 
         self.ratio_clip = getattr(args, "ratio_clip", 0.25)  # `ratio.clamp(1 - clip, 1 + clip)`
         self.lambda_gae_adv = getattr(args, "lambda_gae_adv", 0.95)  # could be 0.80~0.99
-        self.lambda_entropy = getattr(args, "lambda_entropy", 0.001)  # could be 0.00~0.10
-        self.lambda_entropy = th.tensor(self.lambda_entropy, dtype=th.float32, device=self.device)
+
+        # Entropy coefficient: start value (from config) linearly decayed to end value
+        # over `break_step` training steps. Gives early exploration, then sharpens policy.
+        self.lambda_entropy_start = float(getattr(args, "lambda_entropy", 0.001))
+        self.lambda_entropy_end = float(getattr(args, "lambda_entropy_end", self.lambda_entropy_start))
+        self.lambda_entropy = th.tensor(self.lambda_entropy_start, dtype=th.float32, device=self.device)
+
+        # KL early-stopping target; if approx_kl exceeds 1.5 * target_kl inside an update,
+        # break the inner loop. None disables the check.
+        self.target_kl = getattr(args, "target_kl", None)
+
+        # Training-step counter for entropy decay. Incremented in update_net by the
+        # rollout size each call.
+        # Extract the value safely; if it's infinity (during backtest), keep it as float
+        raw_break_step = getattr(args, "break_step", 1)
+        self.break_step = int(raw_break_step) if raw_break_step != float('inf') else float('inf')
+        self.total_step = 0
 
         self.if_use_v_trace = getattr(args, 'if_use_v_trace', True)
 
@@ -132,8 +153,23 @@ class AgentPPO(AgentBase):
         actions, logprobs = self.act.get_action(state)
         return actions, logprobs
 
-    def update_net(self, buffer) -> tuple[float, float, float]:
+    def update_net(self, buffer) -> tuple[float, ...]:
+        """Run PPO updates on a rollout buffer.
+
+        Returns an 11-float tuple (fixed order, consumed positionally by
+        elegantrl/train/evaluator.py TensorBoard scalars):
+            (obj_critic_avg, obj_actor_avg, obj_entropy_avg,
+             approx_kl_avg, clip_fraction_avg, log_std_mean,
+             adv_mean, adv_std, explained_variance,
+             kl_break_iter, current_lambda_entropy)
+        """
         buffer_size = buffer[0].shape[0]
+
+        # Advance training-step counter and compute linearly-decayed entropy coef.
+        self.total_step += buffer_size // max(1, self.num_envs)
+        progress = min(1.0, self.total_step / max(1, self.break_step))
+        cur_lambda = self.lambda_entropy_start + progress * (self.lambda_entropy_end - self.lambda_entropy_start)
+        self.lambda_entropy = th.tensor(cur_lambda, dtype=th.float32, device=self.device)
 
         '''get advantages reward_sums'''
         with th.no_grad():
@@ -144,6 +180,15 @@ class AgentPPO(AgentBase):
 
             advantages = self.get_advantages(states, rewards, undones, unmasks, values)  # shape == (buffer_size, )
             reward_sums = advantages + values  # reward_sums.shape == (buffer_size, )
+
+            # Capture diagnostics before the raw `advantages` is normalized and before
+            # `values` is deleted — needed for explained_variance.
+            adv_mean = advantages.mean().item()
+            adv_std = advantages.std().item()
+            residual_var = (reward_sums - values).var()
+            reward_var = reward_sums.var()
+            explained_variance = float(1.0 - (residual_var / (reward_var + 1e-8)).item())
+
             del rewards, undones, values
 
             advantages = (advantages - advantages.mean()) / (advantages[::4, ::4].std() + 1e-5)  # avoid CUDA OOM
@@ -154,23 +199,48 @@ class AgentPPO(AgentBase):
         obj_entropies = []
         obj_critics = []
         obj_actors = []
+        approx_kls = []
+        clip_fractions = []
+        kl_break_iter = -1
 
         th.set_grad_enabled(True)
         update_times = int(buffer_size * self.repeat_times / self.batch_size)
         assert update_times >= 1
         for update_t in range(update_times):
-            obj_critic, obj_actor, obj_entropy = self.update_objectives(buffer, update_t)
+            obj_critic, obj_actor, obj_entropy, approx_kl, clip_fraction = self.update_objectives(buffer, update_t)
             obj_entropies.append(obj_entropy)
             obj_critics.append(obj_critic)
             obj_actors.append(obj_actor)
+            approx_kls.append(approx_kl)
+            clip_fractions.append(clip_fraction)
+
+            if self.target_kl is not None and approx_kl > 1.5 * self.target_kl:
+                kl_break_iter = update_t + 1
+                break
         th.set_grad_enabled(False)
 
         obj_entropy_avg = np.array(obj_entropies).mean() if len(obj_entropies) else 0.0
         obj_critic_avg = np.array(obj_critics).mean() if len(obj_critics) else 0.0
         obj_actor_avg = np.array(obj_actors).mean() if len(obj_actors) else 0.0
-        return obj_critic_avg, obj_actor_avg, obj_entropy_avg
+        approx_kl_avg = float(np.array(approx_kls).mean()) if len(approx_kls) else 0.0
+        clip_fraction_avg = float(np.array(clip_fractions).mean()) if len(clip_fractions) else 0.0
+        log_std_mean = float(self.act.action_std_log.mean().item())
 
-    def update_objectives(self, buffer: tuple[TEN, ...], update_t: int) -> tuple[float, float, float]:
+        return (
+            float(obj_critic_avg),
+            float(obj_actor_avg),
+            float(obj_entropy_avg),
+            approx_kl_avg,
+            clip_fraction_avg,
+            log_std_mean,
+            float(adv_mean),
+            float(adv_std),
+            explained_variance,
+            float(kl_break_iter),
+            float(cur_lambda),
+        )
+
+    def update_objectives(self, buffer: tuple[TEN, ...], update_t: int) -> tuple[float, float, float, float, float]:
         states, actions, unmasks, logprobs, advantages, reward_sums = buffer
 
         sample_len = states.shape[0]
@@ -193,6 +263,12 @@ class AgentPPO(AgentBase):
         new_logprob, entropy = self.act.get_logprob_entropy(state, action)
         ratio = (new_logprob - logprob.detach()).exp()
 
+        with th.no_grad():
+            # SB3-style unbiased approximate-KL: E[(ratio - 1) - log(ratio)].
+            log_ratio = new_logprob - logprob.detach()
+            approx_kl = float(((ratio - 1) - log_ratio).mean().item())
+            clip_fraction = float(((ratio - 1).abs() > self.ratio_clip).float().mean().item())
+
         # surrogate1 = advantage * ratio
         # surrogate2 = advantage * ratio.clamp(1 - self.ratio_clip, 1 + self.ratio_clip)
         # surrogate = th.min(surrogate1, surrogate2)  # save as below
@@ -202,7 +278,12 @@ class AgentPPO(AgentBase):
         obj_entropy = (entropy * unmask).mean()  # minor actor objective
         obj_actor_full = obj_surrogate - obj_entropy * self.lambda_entropy
         self.optimizer_backward(self.act_optimizer, -obj_actor_full)
-        return obj_critic.item(), obj_surrogate.item(), obj_entropy.item()
+
+        # Prevent log-std from drifting to extremes (mode collapse / blow-up).
+        with th.no_grad():
+            self.act.action_std_log.data.clamp_(LOG_STD_MIN, LOG_STD_MAX)
+
+        return obj_critic.item(), obj_surrogate.item(), obj_entropy.item(), approx_kl, clip_fraction
 
     def get_advantages(self, states: TEN, rewards: TEN, undones: TEN, unmasks: TEN, values: TEN) -> TEN:
         advantages = th.empty_like(values)  # advantage value
@@ -254,7 +335,10 @@ class AgentA2C(AgentPPO):
     “Asynchronous Methods for Deep Reinforcement Learning”. 2016.
     """
 
-    def update_net(self, buffer) -> tuple[float, float, float]:
+    def update_net(self, buffer) -> tuple[float, ...]:
+        """A2C variant. Returns the same 11-float tuple shape as AgentPPO.update_net
+        so evaluator.py can consume it positionally — A2C-irrelevant slots are 0.0
+        (or -1.0 for kl_break_iter, meaning "no break")."""
         buffer_size = buffer[0].shape[0]
 
         '''get advantages reward_sums'''
@@ -285,9 +369,21 @@ class AgentA2C(AgentPPO):
             obj_actors.append(obj_actor)
         th.set_grad_enabled(False)
 
-        obj_critic_avg = np.array(obj_critics).mean() if len(obj_critics) else 0.0
-        obj_actor_avg = np.array(obj_actors).mean() if len(obj_actors) else 0.0
-        return obj_critic_avg, obj_actor_avg, 0
+        obj_critic_avg = float(np.array(obj_critics).mean()) if len(obj_critics) else 0.0
+        obj_actor_avg = float(np.array(obj_actors).mean()) if len(obj_actors) else 0.0
+        return (
+            obj_critic_avg,
+            obj_actor_avg,
+            0.0,  # obj_entropy
+            0.0,  # approx_kl
+            0.0,  # clip_fraction
+            0.0,  # log_std_mean
+            0.0,  # adv_mean
+            0.0,  # adv_std
+            0.0,  # explained_variance
+            -1.0, # kl_break_iter
+            0.0,  # current_lambda_entropy
+        )
 
     def update_objectives(self, buffer: tuple[TEN, ...], update_t: int) -> tuple[float, float]:
         states, actions, unmasks, logprobs, advantages, reward_sums = buffer
