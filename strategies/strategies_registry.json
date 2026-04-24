@@ -4,6 +4,6 @@
     "module": "strategies.ema5_breakout_target_shifting_mtf_strategy",
     "class_name": "Ema5BreakoutTargetShiftingMtfStrategy",
     "timeframe": "15m",
-    "lookback_hours": 1
+    "lookback_hours": 24
   }
 }

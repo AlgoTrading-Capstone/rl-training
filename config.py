@@ -157,7 +157,7 @@ ENABLE_TURBULENCE = True
 # -----------------------------------------------------------
 EXTERNAL_ASSETS = [
     {
-        "enabled": False,
+        "enabled": True,
         "ticker": "^VIX",
         "col_name": "vix",
 
@@ -178,7 +178,7 @@ SLIPPAGE_MEAN = 0.0003
 SLIPPAGE_STD = 0.25
 
 # Name of the machine where training is performed.
-TRAINING_MACHINE_NAME = "OmerPC"
+TRAINING_MACHINE_NAME = "MatanPC"
 
 # Device for running backtests.
 # Options:

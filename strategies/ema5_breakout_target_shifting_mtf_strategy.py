@@ -45,12 +45,13 @@ Anti-lookahead
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from strategies.base_strategy import BaseStrategy, SignalType
+from strategies.base_strategy import BaseStrategy, SignalType, StrategyRecommendation
 from utils.resampling import (
     compute_interval_minutes,
     resample_to_interval,
@@ -93,7 +94,7 @@ class Ema5BreakoutTargetShiftingMtfStrategy(BaseStrategy):
                 "the latest bar until broken."
             ),
             timeframe=timeframe,
-            lookback_hours=1,
+            lookback_hours=24,
         )
 
         # --- inputs ----------------------------------------------------------
@@ -164,6 +165,16 @@ class Ema5BreakoutTargetShiftingMtfStrategy(BaseStrategy):
         # Enforce warmup contract.
         out[: self.MIN_CANDLES_REQUIRED] = "FLAT"
         return pd.Series(out, index=df.index, dtype=object)
+
+    # ---- per-window bridge for data_manager --------------------------------
+
+    def run(self, df: pd.DataFrame, timestamp: datetime) -> StrategyRecommendation:
+        sig_series = self.generate_all_signals(df)
+        try:
+            signal = SignalType(sig_series.iloc[-1]) if len(sig_series) else SignalType.FLAT
+        except (ValueError, KeyError):
+            signal = SignalType.FLAT
+        return StrategyRecommendation(signal=signal, timestamp=timestamp)
 
     # ---- live / streaming mode ---------------------------------------------
 
